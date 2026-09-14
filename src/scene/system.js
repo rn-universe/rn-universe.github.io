@@ -55,7 +55,7 @@ function makeNode(node) {
   for (let i = 0; i < moonCount; i += 1) moons.push(makeMoon(body, i, node.color, Math.max(0.055, node.size * (0.13 - i * 0.018))));
 
   orbit.add(body);
-  const line = makeOrbitLine(node.orbit, node.color, node.id === 'archive' ? 0.13 : 0.2);
+  const line = makeOrbitLine(node.orbit, node.color, node.id === 'archive' ? 0.08 : 0.13);
   line.rotation.z = node.tilt;
   line.userData.systemDecor = true;
   orbit.add(line);

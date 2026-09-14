@@ -69,6 +69,23 @@
             text-shadow:
                 0 0 40px rgba(255,255,255,.08),
                 0 0 100px rgba(255,255,255,.04);
+            .rn {
+    cursor: pointer;
+    transition:
+        transform 0.6s cubic-bezier(.16,1,.3,1),
+        letter-spacing 0.6s ease,
+        text-shadow 0.6s ease;
+}
+
+.rn:hover {
+    transform: scale(1.05);
+    letter-spacing: -0.12em;
+
+    text-shadow:
+        0 0 30px rgba(255,255,255,.15),
+        0 0 80px rgba(255,255,255,.12),
+        0 0 140px rgba(255,255,255,.08);
+}
         }
 
         .meaning {
@@ -185,6 +202,45 @@
                 font-size: 9px;
             }
         }
+        body.entering .identity {
+    animation: universeEntry 1.2s cubic-bezier(.16,1,.3,1) forwards;
+}
+
+@keyframes universeEntry {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: blur(0);
+    }
+
+    60% {
+        transform: scale(1.25);
+        opacity: 1;
+        filter: blur(0);
+    }
+
+    100% {
+        transform: scale(3);
+        opacity: 0;
+        filter: blur(18px);
+    }
+}
+
+body.entering canvas {
+    animation: spaceEntry 1.2s ease forwards;
+}
+
+@keyframes spaceEntry {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
     </style>
 </head>
 
@@ -200,7 +256,7 @@
 
     <main class="content">
         <div class="identity">
-            <div class="rn">RN</div>
+            <div class="rn" id="enterUniverse">RN</div>
 
             <div class="meaning">
                 right now
@@ -314,6 +370,11 @@
             requestAnimationFrame(draw);
         }
 
+        const rn = document.getElementById("enterUniverse");
+
+rn.addEventListener("click", () => {
+    document.body.classList.add("entering");
+});
         window.addEventListener("mousemove", event => {
             mouse.x = event.clientX;
             mouse.y = event.clientY;

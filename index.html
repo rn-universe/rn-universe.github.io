@@ -23,6 +23,22 @@
     <div id="loader" role="status" aria-live="polite"><div class="loader-inner"><div class="loader-mark">RN</div><div class="loader-status">INITIALIZING SYSTEM...</div><div class="loader-bar"></div></div></div>
     <div id="fallback" role="alert"><div class="fallback-copy"><h1>RN SYSTEM</h1><p>This environment needs WebGL to render the system. Try a current version of Chrome, Safari or Firefox with hardware acceleration enabled.</p></div></div>
   </div>
+  <script>
+    window.addEventListener('error', function (event) {
+      if (!event.filename || /main\.js|three|OrbitControls/.test(event.filename) || /module|WebGL|THREE/.test(event.message || '')) {
+        var loader = document.getElementById('loader');
+        var fallback = document.getElementById('fallback');
+        if (loader) loader.classList.add('hidden');
+        if (fallback) fallback.classList.add('visible');
+      }
+    });
+    window.addEventListener('unhandledrejection', function () {
+      var loader = document.getElementById('loader');
+      var fallback = document.getElementById('fallback');
+      if (loader) loader.classList.add('hidden');
+      if (fallback) fallback.classList.add('visible');
+    });
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

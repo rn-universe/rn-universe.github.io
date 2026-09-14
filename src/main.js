@@ -299,8 +299,12 @@ if (!canUseWebGL() || !window.THREE) {
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
       galaxy.rotation.y = elapsed * 0.004;
       const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 230, 760);
+      const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
       galaxy.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) { const opacity = object.material.userData.baseOpacity * galaxyFade; object.material.opacity = opacity; if (object.material.uniforms && object.material.uniforms.uOpacity) object.material.uniforms.uOpacity.value = opacity; }
+      });
+      system.group.traverse((object) => {
+        if (object.material && object.material.userData && object.material.userData.rnOrbit) object.material.opacity = object.material.userData.baseOpacity * rnOrbitFade;
       });
       solar.children.forEach((child, index) => { if (child.type === 'Group') child.rotation.y += 0.00025 + index * 0.00003; });
       if (!state.fly) controls.update();

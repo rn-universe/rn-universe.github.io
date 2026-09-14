@@ -9,6 +9,8 @@ function makeOrbitLine(radius, color, opacity) {
   }
   const geometry = new THREE.BufferGeometry().setFromPoints(points);
   const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+  material.userData.baseOpacity = opacity;
+  material.userData.rnOrbit = true;
   return new THREE.LineLoop(geometry, material);
 }
 

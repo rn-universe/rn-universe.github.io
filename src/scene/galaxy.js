@@ -1,5 +1,5 @@
 const THREE = window.THREE;
-import { makeCircularPointsMaterial } from './particles.js';
+import { makeCircularPointsMaterial } from './particles.js?v=20260914-3';
 
 function randomFactory(seed) {
   let value = seed;

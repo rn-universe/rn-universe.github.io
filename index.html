@@ -7,6 +7,7 @@
   <meta name="description" content="RN SYSTEM — an explorable working universe by Aryan Bhagwan Patil." />
   <title>RN SYSTEM · Aryan Bhagwan Patil</title>
   <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
   <div id="app">
@@ -22,8 +23,6 @@
     <div id="loader" role="status" aria-live="polite"><div class="loader-inner"><div class="loader-mark">RN</div><div class="loader-status">INITIALIZING SYSTEM...</div><div class="loader-bar"></div></div></div>
     <div id="fallback" role="alert"><div class="fallback-copy"><h1>RN SYSTEM</h1><p>This environment needs WebGL to render the system. Try a current version of Chrome, Safari or Firefox with hardware acceleration enabled.</p></div></div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

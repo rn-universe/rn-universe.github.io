@@ -5,6 +5,7 @@ import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 window.THREE = THREE;
 const { buildRNSystem } = await import('./scene/system.js');
 const { buildMilkyWay } = await import('./scene/galaxy.js');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');
@@ -89,7 +90,7 @@ if (!canUseWebGL() || !window.THREE) {
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      return new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xdbe6ff, size: lowPower ? 1.7 : 1.25, sizeAttenuation: true, transparent: true, opacity: 0.62, depthWrite: false }));
+      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.4 : 5.4, opacity: 0.62 }));
     }
 
     function buildSolarNeighborhood() {
@@ -297,6 +298,10 @@ if (!canUseWebGL() || !window.THREE) {
       system.core.group.rotation.y = elapsed * 0.06;
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
       galaxy.rotation.y = elapsed * 0.004;
+      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 230, 760);
+      galaxy.traverse((object) => {
+        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) object.material.opacity = object.material.userData.baseOpacity * galaxyFade;
+      });
       solar.children.forEach((child, index) => { if (child.type === 'Group') child.rotation.y += 0.00025 + index * 0.00003; });
       if (!state.fly) controls.update();
       updateScaleReadout();

@@ -3,9 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js');
-const { buildMilkyWay } = await import('./scene/galaxy.js');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js');
+const { buildRNSystem } = await import('./scene/system.js?v=20260914-3');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260914-3');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260914-3');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');

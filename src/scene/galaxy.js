@@ -1,5 +1,5 @@
 const THREE = window.THREE;
-import { makeCircularPointsMaterial } from './particles.js?v=20260915-6';
+import { makeCircularPointsMaterial } from './particles.js?v=20260915-7';
 
 function randomFactory(seed) {
   let value = seed;
@@ -14,6 +14,15 @@ function createRing(radius, opacity = 0.05) {
   for (let i = 0; i <= segments; i += 1) { const angle = (i / segments) * Math.PI * 2; points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)); }
   const material = new THREE.LineBasicMaterial({ color: 0x7186b6, transparent: true, opacity, depthWrite: false }); material.userData.baseOpacity = opacity;
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), material);
+}
+function createRegion(random, radius, angle, color, count, spread) {
+  const points = [];
+  for (let i = 0; i < count; i += 1) {
+    const r = radius + (random() - 0.5) * spread;
+    const tangent = (random() - 0.5) * spread;
+    points.push(Math.cos(angle) * r + Math.cos(angle + Math.PI / 2) * tangent, (random() - 0.5) * 14, Math.sin(angle) * r + Math.sin(angle + Math.PI / 2) * tangent);
+  }
+  return createPoints(points, color, 4.4, 0.25);
 }
 
 export function buildMilkyWay(lowPower) {
@@ -40,12 +49,17 @@ export function buildMilkyWay(lowPower) {
   for (let i = 0; i < gasCount; i += 1) { const radius = 90 + random() * 620; const arm = Math.floor(random() * arms); const angle = arm * (Math.PI * 2 / arms) + radius * 0.008 + (random() - 0.5) * 0.22; const cluster = Math.pow(random(), 2.8); gas.push(Math.cos(angle) * (radius + cluster * 28), (random() - 0.5) * (6 + cluster * 9), Math.sin(angle) * (radius + cluster * 28)); }
   const gasLayer = createPoints(gas, 0x7a7fc2, lowPower ? 3.2 : 4.1, 0.075); gasLayer.name = 'INTERSTELLAR_GAS'; group.add(gasLayer);
 
+  const regions = new THREE.Group(); regions.name = 'STAR_FORMING_REGIONS';
+  [[260, 0.72, 0x6fd4ff, 420, 30], [385, 2.78, 0xff996e, 360, 34], [520, 4.22, 0x9d9bff, 400, 34], [650, 5.55, 0xffc56e, 340, 38], [735, 1.95, 0x74e4d1, 300, 30]].forEach(([radius, angle, color, count, spread]) => regions.add(createRegion(random, radius, angle, color, lowPower ? Math.round(count * 0.45) : count, spread)));
+  group.add(regions);
+
   const movingStarStreamPoints = []; const movingCount = lowPower ? 360 : 900;
   for (let i = 0; i < movingCount; i += 1) { const radius = 220 + random() * 650; const a = random() * Math.PI * 2; movingStarStreamPoints.push(Math.cos(a) * radius, (random() - 0.5) * 110, Math.sin(a) * radius); }
   const movingStarStream = createPoints(movingStarStreamPoints, 0xe8efff, lowPower ? 2.8 : 3.7, 0.24); movingStarStream.name = 'MOVING_STAR_STREAM'; group.add(movingStarStream);
 
   const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(132, 48, 24), new THREE.MeshBasicMaterial({ color: 0xffa95d, transparent: true, opacity: 0.035, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending })); coreGlow.material.userData.baseOpacity = 0.035; group.add(coreGlow);
   const coreRing = createRing(150, 0.022); coreRing.rotation.x = 0.035; group.add(coreRing);
+  const midRing = createRing(420, 0.009); midRing.scale.y = 0.52; group.add(midRing);
   const outerRing = createRing(790, 0.012); outerRing.scale.y = 0.35; group.add(outerRing);
   const halo = new THREE.Mesh(new THREE.SphereGeometry(910, 40, 20), new THREE.MeshBasicMaterial({ color: 0x202b56, transparent: true, opacity: 0.02, side: THREE.BackSide, depthWrite: false })); halo.material.userData.baseOpacity = 0.02; group.add(halo);
 
@@ -55,18 +69,21 @@ export function buildMilkyWay(lowPower) {
   const markerCore = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf7d98b, transparent: true, opacity: 0.88, blending: THREE.AdditiveBlending, depthWrite: false }));
   marker.add(markerGlow, markerCore); const markerOrbit = createRing(9, 0.08); markerOrbit.rotation.x = Math.PI / 2; marker.add(markerOrbit); group.add(marker);
   group.userData.solarNeighborhood = solarPosition.clone();
-  group.userData.advance = (elapsed, delta = 0.016) => {
+  group.userData.advance = (elapsed) => {
     const motion = lowPower ? 1 : 1.7;
     stellarDisk.rotation.y = elapsed * 0.0062 * motion;
     stellarDisk.rotation.x = Math.sin(elapsed * 0.11) * 0.006;
     stellarBulge.rotation.y = elapsed * 0.0026;
     dustLayer.rotation.y = elapsed * 0.0054;
     gasLayer.rotation.y = -elapsed * 0.0039;
+    regions.rotation.y = elapsed * 0.0048;
     movingStarStream.rotation.y = elapsed * 0.014;
     movingStarStream.position.x = Math.sin(elapsed * 0.21) * 2.6;
     movingStarStream.position.z = Math.cos(elapsed * 0.17) * 2.6;
     marker.rotation.y = elapsed * 0.25;
-    const pulse = 1 + Math.sin(elapsed * 2.1) * 0.12; markerGlow.scale.setScalar(pulse); markerCore.scale.setScalar(1 + Math.sin(elapsed * 3.1) * 0.09); coreGlow.scale.setScalar(1 + Math.sin(elapsed * 0.5) * 0.025);
+    midRing.rotation.z = elapsed * 0.003;
+    const pulse = 1 + Math.sin(elapsed * 2.1) * 0.12;
+    markerGlow.scale.setScalar(pulse); markerCore.scale.setScalar(1 + Math.sin(elapsed * 3.1) * 0.09); coreGlow.scale.setScalar(1 + Math.sin(elapsed * 0.5) * 0.025);
   };
   return group;
 }

@@ -9,13 +9,26 @@ function randomFactory(seed) {
   };
 }
 
-function createPoints(points, color, size, opacity, blending) {
+function createPoints(points, color, size, opacity, blending = THREE.AdditiveBlending) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
   const material = makeCircularPointsMaterial({ color, size, opacity });
   material.blending = blending;
   material.userData.baseOpacity = opacity;
   return new THREE.Points(geometry, material);
+}
+
+function createRing(radius, opacity = 0.05) {
+  const points = [];
+  const segments = 240;
+  for (let i = 0; i <= segments; i += 1) {
+    const angle = (i / segments) * Math.PI * 2;
+    points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+  }
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({ color: 0x7186b6, transparent: true, opacity, depthWrite: false });
+  material.userData.baseOpacity = opacity;
+  return new THREE.LineLoop(geometry, material);
 }
 
 export function buildMilkyWay(lowPower) {
@@ -25,45 +38,122 @@ export function buildMilkyWay(lowPower) {
   group.rotation.z = -0.12;
 
   const random = randomFactory(2741991);
-  const starCount = lowPower ? 2300 : 5400;
+  const starCount = lowPower ? 4200 : 10500;
   const stars = [];
+  const warmStars = [];
+  const coolStars = [];
   const arms = 4;
+
   for (let i = 0; i < starCount; i += 1) {
-    const radius = 42 + Math.pow(random(), 0.62) * 760;
+    const radius = 28 + Math.pow(random(), 0.62) * 790;
     const arm = Math.floor(random() * arms);
-    const angle = arm * (Math.PI * 2 / arms) + Math.log(radius / 40) * 1.35 + (random() - 0.5) * (0.5 - radius * 0.00018);
-    const spread = (random() - 0.5) * (22 + radius * 0.055);
+    const spiral = Math.log(radius / 34) * 1.42;
+    const angle = arm * (Math.PI * 2 / arms) + spiral + (random() - 0.5) * (0.46 - radius * 0.00012);
+    const spread = (random() - 0.5) * (14 + radius * 0.07);
     const x = Math.cos(angle) * radius + Math.cos(angle + Math.PI / 2) * spread;
     const z = Math.sin(angle) * radius + Math.sin(angle + Math.PI / 2) * spread;
-    const y = (random() - 0.5) * (18 + radius * 0.045);
-    stars.push(x, y, z);
+    const diskThickness = 8 + radius * 0.028;
+    const y = (random() - 0.5) * diskThickness;
+    const roll = random();
+    const point = [x, y, z];
+    if (roll < 0.2) warmStars.push(...point);
+    else if (roll > 0.78) coolStars.push(...point);
+    else stars.push(...point);
   }
-  group.add(createPoints(stars, 0xb7d8ff, lowPower ? 3.6 : 4.6, 0.72, THREE.AdditiveBlending));
+
+  group.add(createPoints(stars, 0xdde8ff, lowPower ? 3.7 : 4.8, 0.78));
+  group.add(createPoints(warmStars, 0xffc58a, lowPower ? 3.4 : 4.3, 0.5));
+  group.add(createPoints(coolStars, 0x9ecbff, lowPower ? 3.1 : 4.0, 0.48));
 
   const bulge = [];
-  const bulgeCount = lowPower ? 500 : 1200;
+  const bulgeWarm = [];
+  const bulgeCount = lowPower ? 900 : 2200;
   for (let i = 0; i < bulgeCount; i += 1) {
-    const radius = Math.pow(random(), 0.55) * 98;
+    const radius = Math.pow(random(), 0.5) * 120;
     const angle = random() * Math.PI * 2;
-    bulge.push(Math.cos(angle) * radius, (random() - 0.5) * (70 - radius * 0.45), Math.sin(angle) * radius);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius * 0.72;
+    const y = (random() - 0.5) * (64 - radius * 0.3);
+    (i % 3 ? bulge : bulgeWarm).push(x, y, z);
   }
-  group.add(createPoints(bulge, 0xffd9a0, lowPower ? 4.0 : 5.0, 0.34, THREE.AdditiveBlending));
+  group.add(createPoints(bulge, 0xffd7b2, lowPower ? 4.5 : 5.4, 0.26));
+  group.add(createPoints(bulgeWarm, 0xffa56f, lowPower ? 4.2 : 5.1, 0.16));
 
   const dust = [];
-  const dustCount = lowPower ? 650 : 1500;
+  const dustCount = lowPower ? 900 : 2400;
   for (let i = 0; i < dustCount; i += 1) {
-    const radius = 80 + random() * 690;
+    const radius = 70 + random() * 690;
     const arm = Math.floor(random() * arms);
-    const angle = arm * (Math.PI * 2 / arms) + radius * 0.0082 + (random() - 0.5) * 0.45;
-    dust.push(Math.cos(angle) * radius, (random() - 0.5) * 16, Math.sin(angle) * radius);
+    const angle = arm * (Math.PI * 2 / arms) + radius * 0.0083 + (random() - 0.5) * 0.55;
+    const spread = (random() - 0.5) * 34;
+    dust.push(
+      Math.cos(angle) * radius + Math.cos(angle + Math.PI / 2) * spread,
+      (random() - 0.5) * 12,
+      Math.sin(angle) * radius + Math.sin(angle + Math.PI / 2) * spread,
+    );
   }
-  group.add(createPoints(dust, 0x6f78a8, lowPower ? 2.8 : 3.6, 0.06, THREE.NormalBlending));
+  group.add(createPoints(dust, 0x566a9c, lowPower ? 2.5 : 3.3, 0.045, THREE.NormalBlending));
+
+  const gas = [];
+  const gasCount = lowPower ? 450 : 1200;
+  for (let i = 0; i < gasCount; i += 1) {
+    const radius = 90 + random() * 620;
+    const arm = Math.floor(random() * arms);
+    const angle = arm * (Math.PI * 2 / arms) + radius * 0.008 + (random() - 0.5) * 0.22;
+    const cluster = Math.pow(random(), 2.8);
+    const x = Math.cos(angle) * (radius + cluster * 28);
+    const z = Math.sin(angle) * (radius + cluster * 28);
+    const y = (random() - 0.5) * (6 + cluster * 9);
+    gas.push(x, y, z);
+  }
+  group.add(createPoints(gas, 0x7a7fc2, lowPower ? 3.2 : 4.0, 0.05));
+
+  const coreGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(132, 48, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffa95d, transparent: true, opacity: 0.035, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending })
+  );
+  coreGlow.material.userData.baseOpacity = 0.035;
+  group.add(coreGlow);
+
+  const coreRing = createRing(150, 0.022);
+  coreRing.rotation.x = 0.035;
+  group.add(coreRing);
+
+  const outerRing = createRing(790, 0.012);
+  outerRing.scale.y = 0.35;
+  group.add(outerRing);
 
   const halo = new THREE.Mesh(
-    new THREE.SphereGeometry(910, 32, 16),
-    new THREE.MeshBasicMaterial({ color: 0x202b56, transparent: true, opacity: 0.025, side: THREE.BackSide, depthWrite: false })
+    new THREE.SphereGeometry(910, 40, 20),
+    new THREE.MeshBasicMaterial({ color: 0x202b56, transparent: true, opacity: 0.02, side: THREE.BackSide, depthWrite: false })
   );
-  halo.material.userData.baseOpacity = 0.025;
+  halo.material.userData.baseOpacity = 0.02;
   group.add(halo);
+
+  const solarAngle = -0.62;
+  const solarRadius = 470;
+  const solarPosition = new THREE.Vector3(Math.cos(solarAngle) * solarRadius, 0, Math.sin(solarAngle) * solarRadius);
+  const marker = new THREE.Group();
+  marker.position.copy(solarPosition);
+  marker.name = 'SOLAR_NEIGHBORHOOD_MARKER';
+
+  const markerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(7.5, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0xf7d98b, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  marker.add(markerGlow);
+
+  const markerCore = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0xf7d98b, transparent: true, opacity: 0.88, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  marker.add(markerCore);
+
+  const markerOrbit = createRing(9, 0.08);
+  markerOrbit.rotation.x = Math.PI / 2;
+  marker.add(markerOrbit);
+  group.add(marker);
+
+  group.userData.solarNeighborhood = solarPosition.clone();
   return group;
 }

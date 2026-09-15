@@ -1,5 +1,5 @@
 const THREE = window.THREE;
-import { makeCircularPointsMaterial } from './particles.js?v=20260915-5';
+import { makeCircularPointsMaterial } from './particles.js?v=20260915-6';
 
 function randomFactory(seed) {
   let value = seed;
@@ -38,7 +38,7 @@ export function buildMilkyWay(lowPower) {
   group.rotation.z = -0.12;
 
   const random = randomFactory(2741991);
-  const starCount = lowPower ? 4200 : 10500;
+  const starCount = lowPower ? 5200 : 14500;
   const stars = [];
   const warmStars = [];
   const coolStars = [];
@@ -61,13 +61,16 @@ export function buildMilkyWay(lowPower) {
     else stars.push(...point);
   }
 
-  group.add(createPoints(stars, 0xdde8ff, lowPower ? 3.7 : 4.8, 0.78));
-  group.add(createPoints(warmStars, 0xffc58a, lowPower ? 3.4 : 4.3, 0.5));
-  group.add(createPoints(coolStars, 0x9ecbff, lowPower ? 3.1 : 4.0, 0.48));
+  const stellarDisk = new THREE.Group();
+  stellarDisk.name = 'STELLAR_DISK';
+  stellarDisk.add(createPoints(stars, 0xdde8ff, lowPower ? 3.5 : 4.6, 0.78));
+  stellarDisk.add(createPoints(warmStars, 0xffc58a, lowPower ? 3.25 : 4.1, 0.52));
+  stellarDisk.add(createPoints(coolStars, 0x9ecbff, lowPower ? 3.0 : 3.8, 0.5));
+  group.add(stellarDisk);
 
   const bulge = [];
   const bulgeWarm = [];
-  const bulgeCount = lowPower ? 900 : 2200;
+  const bulgeCount = lowPower ? 1100 : 2900;
   for (let i = 0; i < bulgeCount; i += 1) {
     const radius = Math.pow(random(), 0.5) * 120;
     const angle = random() * Math.PI * 2;
@@ -76,11 +79,14 @@ export function buildMilkyWay(lowPower) {
     const y = (random() - 0.5) * (64 - radius * 0.3);
     (i % 3 ? bulge : bulgeWarm).push(x, y, z);
   }
-  group.add(createPoints(bulge, 0xffd7b2, lowPower ? 4.5 : 5.4, 0.26));
-  group.add(createPoints(bulgeWarm, 0xffa56f, lowPower ? 4.2 : 5.1, 0.16));
+  const stellarBulge = new THREE.Group();
+  stellarBulge.name = 'STELLAR_BULGE';
+  stellarBulge.add(createPoints(bulge, 0xffd7b2, lowPower ? 4.2 : 5.2, 0.28));
+  stellarBulge.add(createPoints(bulgeWarm, 0xffa56f, lowPower ? 4.0 : 4.9, 0.18));
+  group.add(stellarBulge);
 
   const dust = [];
-  const dustCount = lowPower ? 900 : 2400;
+  const dustCount = lowPower ? 1100 : 3000;
   for (let i = 0; i < dustCount; i += 1) {
     const radius = 70 + random() * 690;
     const arm = Math.floor(random() * arms);
@@ -92,10 +98,12 @@ export function buildMilkyWay(lowPower) {
       Math.sin(angle) * radius + Math.sin(angle + Math.PI / 2) * spread,
     );
   }
-  group.add(createPoints(dust, 0x566a9c, lowPower ? 2.5 : 3.3, 0.045, THREE.NormalBlending));
+  const dustLayer = createPoints(dust, 0x566a9c, lowPower ? 2.45 : 3.2, 0.052, THREE.NormalBlending);
+  dustLayer.name = 'DUST_LANES';
+  group.add(dustLayer);
 
   const gas = [];
-  const gasCount = lowPower ? 450 : 1200;
+  const gasCount = lowPower ? 550 : 1500;
   for (let i = 0; i < gasCount; i += 1) {
     const radius = 90 + random() * 620;
     const arm = Math.floor(random() * arms);
@@ -106,7 +114,19 @@ export function buildMilkyWay(lowPower) {
     const y = (random() - 0.5) * (6 + cluster * 9);
     gas.push(x, y, z);
   }
-  group.add(createPoints(gas, 0x7a7fc2, lowPower ? 3.2 : 4.0, 0.05));
+  const gasLayer = createPoints(gas, 0x7a7fc2, lowPower ? 3.0 : 3.8, 0.06);
+  gasLayer.name = 'INTERSTELLAR_GAS';
+  group.add(gasLayer);
+
+  const movingStarStreamPoints = [];
+  for (let i = 0; i < (lowPower ? 220 : 520); i += 1) {
+    const radius = 260 + random() * 540;
+    const a = random() * Math.PI * 2;
+    movingStarStreamPoints.push(Math.cos(a) * radius, (random() - 0.5) * 80, Math.sin(a) * radius);
+  }
+  const movingStarStream = createPoints(movingStarStreamPoints, 0xe8efff, lowPower ? 2.5 : 3.2, 0.18);
+  movingStarStream.name = 'MOVING_STAR_STREAM';
+  group.add(movingStarStream);
 
   const coreGlow = new THREE.Mesh(
     new THREE.SphereGeometry(132, 48, 24),
@@ -155,5 +175,18 @@ export function buildMilkyWay(lowPower) {
   group.add(marker);
 
   group.userData.solarNeighborhood = solarPosition.clone();
+  group.userData.advance = (elapsed, delta) => {
+    if (!lowPower) stellarDisk.rotation.y = elapsed * 0.0042;
+    else stellarDisk.rotation.y = elapsed * 0.0026;
+    stellarBulge.rotation.y = elapsed * 0.0016;
+    dustLayer.rotation.y = elapsed * 0.0035;
+    gasLayer.rotation.y = elapsed * 0.0025;
+    movingStarStream.rotation.y = elapsed * 0.0075;
+    marker.rotation.y = elapsed * 0.18;
+    const pulse = 1 + Math.sin(elapsed * 2.1) * 0.08;
+    markerGlow.scale.setScalar(pulse);
+    markerCore.scale.setScalar(1 + Math.sin(elapsed * 3.1) * 0.06);
+    coreGlow.scale.setScalar(1 + Math.sin(elapsed * 0.5) * 0.018);
+  };
   return group;
 }

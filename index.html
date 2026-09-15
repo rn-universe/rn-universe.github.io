@@ -3,53 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#02030a" />
-  <meta name="description" content="RN SYSTEM — an explorable working universe by Aryan Bhagwan Patil." />
-  <meta name="author" content="Aryan Bhagwan Patil" />
-  <meta property="og:title" content="RN SYSTEM · Aryan Bhagwan Patil" />
-  <meta property="og:description" content="Enter the working universe of RN, an interactive field of projects, experiments, ideas and observations." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://rn-universe.github.io/" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="RN SYSTEM · Aryan Bhagwan Patil" />
-  <meta name="twitter:description" content="An explorable working universe of projects, experiments, ideas and observations." />
-  <link rel="canonical" href="https://rn-universe.github.io/" />
-  <title>RN SYSTEM · Aryan Bhagwan Patil</title>
-  <link rel="stylesheet" href="./src/styles.css?v=20260915-10" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="description" content="RN Universe · an interactive 3D working universe by Aryan Bhagwan Patil." />
+  <title>RN UNIVERSE · RIGHT NOW</title>
+  <link rel="stylesheet" href="./src/styles.css?v=20260915-20" />
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
-  <div id="app">
-    <div id="star-layer" aria-hidden="true"><canvas id="star-canvas"></canvas></div>
-    <div id="space" aria-label="Interactive 3D RN SYSTEM environment"></div>
-    <div id="ui">
-      <header class="brand" aria-label="RN SYSTEM"><div class="brand-mark">RN</div><div class="brand-sub">SYSTEM</div><div class="brand-line"></div></header>
-      <nav class="scale-nav" aria-label="Scale navigation"><button class="scale-btn active" data-scale="rn" type="button">RN SYSTEM</button><button class="scale-btn" data-scale="solar" type="button">SOLAR</button><button class="scale-btn" data-scale="galaxy" type="button">MILKY WAY</button></nav>
-      <div class="scale-readout" aria-live="polite"><span id="scale-name" class="scale-name">RN SYSTEM</span><span id="scale-detail" class="scale-detail">close orbit</span></div>
-      <div class="instructions">DRAG <span>·</span> ZOOM <span>·</span> EXPLORE</div>
-      <div id="focus-label" aria-hidden="true"></div>
-      <aside id="panel" aria-live="polite" aria-label="Selected system object"><button id="panel-close" class="panel-close" type="button" aria-label="Close information panel">×</button><div id="panel-kicker" class="panel-kicker"></div><h2 id="panel-title" class="panel-title"></h2><p id="panel-description" class="panel-description"></p><div id="panel-fields" class="panel-fields"></div><div id="panel-extra"></div><div class="panel-footer">SELECT A DIFFERENT ORBIT TO CONTINUE</div></aside>
-    </div>
-    <div id="loader" role="status" aria-live="polite"><div class="loader-inner"><div class="loader-mark">RN</div><div class="loader-status">INITIALIZING SYSTEM...</div><div class="loader-bar"></div></div></div>
-    <div id="fallback" role="alert"><div class="fallback-copy"><h1>RN SYSTEM</h1><p>This environment needs WebGL to render the system. Try a current version of Chrome, Safari or Firefox with hardware acceleration enabled.</p></div></div>
-  </div>
-  <script src="./src/space-motion.js?v=20260915-2"></script>
-  <script>
-    window.addEventListener('error', function (event) {
-      if (!event.filename || /main\.js|three|OrbitControls/.test(event.filename) || /module|WebGL|THREE/.test(event.message || '')) {
-        var loader = document.getElementById('loader');
-        var fallback = document.getElementById('fallback');
-        if (loader) loader.classList.add('hidden');
-        if (fallback) fallback.classList.add('visible');
-      }
-    });
-    window.addEventListener('unhandledrejection', function () {
-      var loader = document.getElementById('loader');
-      var fallback = document.getElementById('fallback');
-      if (loader) loader.classList.add('hidden');
-      if (fallback) fallback.classList.add('visible');
-    });
-  </script>
-  <script type="module" src="./src/main.js?v=20260915-10"></script>
+  <main id="app">
+    <div id="space" aria-label="Interactive RN Universe 3D environment"></div>
+    <header class="topbar"><div class="brand"><span class="brand-main">RN</span><span class="brand-sub">UNIVERSE</span></div><button id="journeys" class="top-button" type="button">JOURNEYS</button><button id="help" class="top-button" type="button">?</button></header>
+    <aside class="left-stack" aria-label="Navigation tools">
+      <button class="tool active" data-tool="explore" type="button">EXPLORE</button>
+      <button class="tool" data-tool="destinations" type="button">DESTINATIONS</button>
+      <button class="tool" data-tool="missions" type="button">RN OBJECTS</button>
+      <button class="tool" data-tool="visual" type="button">VISUALS</button>
+    </aside>
+    <section id="object-card" class="object-card hidden" aria-live="polite"><button id="object-close" class="icon-button" type="button" aria-label="Close">×</button><div id="object-kicker" class="object-kicker">OBJECT</div><h1 id="object-title">RN SYSTEM</h1><p id="object-description"></p><div id="object-meta" class="object-meta"></div><button id="object-fly" class="primary-button" type="button">FLY TO OBJECT</button></section>
+    <section id="destination-panel" class="bottom-panel hidden" aria-label="Destinations"><div class="panel-title">DESTINATIONS</div><div class="destination-row"><button data-destination="rn" type="button"><strong>RN SYSTEM</strong><span>projects + experiments</span></button><button data-destination="solar" type="button"><strong>SOLAR SYSTEM</strong><span>sun + planets + moons</span></button><button data-destination="galaxy" type="button"><strong>MILKY WAY</strong><span>outer perspective</span></button></div></section>
+    <section id="visual-panel" class="bottom-panel hidden" aria-label="Visual controls"><div class="panel-title">VISUAL CONTROLS</div><div class="control-grid"><label><span>ORBIT LINES</span><input id="orbit-toggle" type="checkbox" checked /></label><label><span>STARFIELD</span><input id="star-toggle" type="checkbox" checked /></label><label><span>OBJECT LABELS</span><input id="label-toggle" type="checkbox" checked /></label><label><span>SIMULATION</span><input id="motion-toggle" type="checkbox" checked /></label></div></section>
+    <div class="timebar"><div class="time-group"><button id="rewind" class="time-button" type="button">◀</button><button id="pause" class="time-button" type="button">Ⅱ</button><button id="forward" class="time-button" type="button">▶</button></div><div class="time-readout"><span>SIMULATION TIME</span><strong id="sim-time">RIGHT NOW</strong></div><div class="rate-group"><span>RATE</span><button class="rate active" data-rate="1" type="button">1×</button><button class="rate" data-rate="10" type="button">10×</button><button class="rate" data-rate="100" type="button">100×</button></div></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div><div id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">INITIALIZING 3D SPACE</div></div>
+  </main>
+  <script type="module" src="./src/main.js?v=20260915-20"></script>
 </body>
 </html>

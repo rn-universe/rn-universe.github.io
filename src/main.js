@@ -1,49 +1,52 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
 const root = document.getElementById('space');
 const loader = document.getElementById('loader');
-const card = document.getElementById('card');
-const cardKicker = document.getElementById('card-kicker');
-const cardTitle = document.getElementById('card-title');
-const cardCopy = document.getElementById('card-copy');
-const toast = document.getElementById('toast');
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const mobile = matchMedia('(max-width: 700px)').matches;
+const scaleLabel = document.getElementById('scale-label');
+const scaleSub = document.getElementById('scale-sub');
+const scaleChip = document.getElementById('scale-chip');
+const zoomReadout = document.getElementById('zoom-readout');
+const helpPanel = document.getElementById('help-panel');
+const helpButton = document.getElementById('help');
 
-let renderer;
-try {
-  renderer = new THREE.WebGLRenderer({ antialias: !mobile, powerPreference: 'high-performance' });
-} catch (error) {
-  throw new Error('WebGL unavailable', { cause: error });
-}
+const lowPower = matchMedia('(max-width: 700px)').matches || (navigator.hardwareConcurrency || 8) <= 4;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x03050a);
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 5000);
-camera.position.set(0, 7, 24);
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, mobile ? 1.25 : 1.8));
+scene.background = new THREE.Color(0x000000);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 7000);
+camera.position.set(0, 165, 980);
+
+const renderer = new THREE.WebGLRenderer({ antialias: !lowPower, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.8));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.toneMappingExposure = 1.15;
 root.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.045;
-controls.enablePan = true;
-controls.screenSpacePanning = true;
-controls.minDistance = 4.5;
-controls.maxDistance = 900;
-controls.rotateSpeed = 0.55;
-controls.zoomSpeed = 0.8;
+controls.enablePan = false;
+controls.rotateSpeed = lowPower ? 0.36 : 0.5;
+controls.zoomSpeed = lowPower ? 0.58 : 0.78;
+controls.minDistance = 28;
+controls.maxDistance = 3400;
+controls.target.set(0, 0, 0);
 if ('zoomToCursor' in controls) controls.zoomToCursor = true;
 
-scene.add(new THREE.AmbientLight(0x8294b8, 0.28));
-const keyLight = new THREE.PointLight(0xbfd8ff, 2.8, 260, 1.4);
-keyLight.position.set(12, 18, 10);
-scene.add(keyLight);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), lowPower ? 0.72 : 0.95, 0.8, 0.72);
+bloom.threshold = 0.02;
+bloom.radius = 0.9;
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(bloom);
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -53,166 +56,227 @@ function rng(seed) {
   };
 }
 
-function particleField(count, radius, color, size, opacity, seed) {
-  const random = rng(seed);
+const random = rng(9021001);
+
+function makeGalaxyStars(count) {
   const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const phases = new Float32Array(count);
+  const arms = 5;
+  const colorA = new THREE.Color().setRGB(0.35, 0.55, 1.0);
+  const colorB = new THREE.Color().setRGB(1.0, 0.72, 0.42);
+  const colorC = new THREE.Color().setRGB(0.92, 0.95, 1.0);
+
   for (let i = 0; i < count; i += 1) {
-    const r = radius * (0.5 + random() * 0.5);
-    const u = random() * 2 - 1;
-    const a = random() * Math.PI * 2;
-    const s = Math.sqrt(1 - u * u);
-    positions[i * 3] = Math.cos(a) * s * r;
-    positions[i * 3 + 1] = u * r;
-    positions[i * 3 + 2] = Math.sin(a) * s * r;
+    const coreBias = Math.pow(random(), 1.42);
+    const radius = 20 + coreBias * 545;
+    const arm = Math.floor(random() * arms);
+    const spiral = radius * 0.0205;
+    const jitter = (random() - 0.5) * (0.16 + radius * 0.0020);
+    const angle = arm * (Math.PI * 2 / arms) + spiral + jitter;
+    const tangent = (random() - 0.5) * (16 + radius * 0.085);
+    const radial = radius + (random() - 0.5) * (9 + radius * 0.05);
+    const x = Math.cos(angle) * radial + Math.cos(angle + Math.PI / 2) * tangent;
+    const z = Math.sin(angle) * radial + Math.sin(angle + Math.PI / 2) * tangent;
+    const thickness = (1 - radial / 620) * 17 + 2;
+    const y = (random() - 0.5) * Math.max(2, thickness);
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+
+    const outer = Math.min(1, radial / 520);
+    const starType = random();
+    const c = starType < 0.17 ? colorB : starType < 0.6 ? colorA : colorC;
+    const mix = Math.min(1, 0.15 + outer * 0.45 + random() * 0.35);
+    colors[i * 3] = c.r * (0.75 + mix * 0.25);
+    colors[i * 3 + 1] = c.g * (0.75 + mix * 0.25);
+    colors[i * 3 + 2] = c.b * (0.8 + mix * 0.2);
+    sizes[i] = 0.65 + random() * (radial < 130 ? 2.2 : 1.2);
+    phases[i] = random() * Math.PI * 2;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+  geometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime: { value: 0 },
+      uPixelRatio: { value: Math.min(devicePixelRatio || 1, 2) },
+    },
+    vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aPhase; varying vec3 vColor; varying float vPhase; uniform float uTime; uniform float uPixelRatio; void main(){vColor=aColor;vPhase=aPhase;vec4 mv=modelViewMatrix*vec4(position,1.0);float tw=0.92+0.11*sin(uTime*1.7+aPhase);gl_PointSize=aSize*uPixelRatio*(420.0/-mv.z)*tw;gl_Position=projectionMatrix*mv;}`,
+    fragmentShader: `varying vec3 vColor; varying float vPhase; uniform float uTime; void main(){vec2 p=gl_PointCoord-0.5;float d=length(p);if(d>0.5)discard;float glow=smoothstep(0.5,0.0,d);float halo=smoothstep(0.5,0.12,d);float tw=0.82+0.18*sin(uTime*1.8+vPhase);gl_FragColor=vec4(vColor*(0.55+0.75*halo)*tw,glow*(0.55+0.45*halo));}`,
+  });
+  return { points: new THREE.Points(geometry, material), material };
+}
+
+function makeDust(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const phases = new Float32Array(count);
+
+  for (let i = 0; i < count; i += 1) {
+    const radius = 70 + Math.pow(random(), 0.55) * 500;
+    const arm = Math.floor(random() * 5);
+    const angle = arm * (Math.PI * 2 / 5) + radius * 0.0205 + (random() - 0.5) * 0.22;
+    const band = (random() - 0.5) * (34 + radius * 0.05);
+    positions[i * 3] = Math.cos(angle) * radius + Math.cos(angle + Math.PI / 2) * band;
+    positions[i * 3 + 1] = (random() - 0.5) * (6 + radius * 0.015);
+    positions[i * 3 + 2] = Math.sin(angle) * radius + Math.sin(angle + Math.PI / 2) * band;
+    const warm = random();
+    colors[i * 3] = warm < 0.5 ? 0.22 : 0.38;
+    colors[i * 3 + 1] = warm < 0.5 ? 0.09 : 0.18;
+    colors[i * 3 + 2] = warm < 0.5 ? 0.12 : 0.36;
+    phases[i] = random() * Math.PI * 2;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `attribute vec3 aColor;attribute float aPhase;varying vec3 vColor;varying float vPhase;void main(){vColor=aColor;vPhase=aPhase;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=(2.0+2.0*sin(aPhase))*260.0/-mv.z;gl_Position=projectionMatrix*mv;}`,
+    fragmentShader: `varying vec3 vColor;varying float vPhase;uniform float uTime;void main(){vec2 p=gl_PointCoord-.5;float d=length(p);if(d>.5)discard;float a=smoothstep(.5,.05,d)*.1;gl_FragColor=vec4(vColor,a);}`,
+  });
+  return { points: new THREE.Points(geometry, material), material };
+}
+
+function makeBackgroundStars(count) {
+  const positions = new Float32Array(count * 3);
+  const rand = rng(710221);
+  for (let i = 0; i < count; i += 1) {
+    const radius = 900 + rand() * 2200;
+    const u = rand() * 2 - 1;
+    const phi = Math.acos(u);
+    const theta = rand() * Math.PI * 2;
+    positions[i * 3] = Math.sin(phi) * Math.cos(theta) * radius;
+    positions[i * 3 + 1] = Math.cos(phi) * radius;
+    positions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  return new THREE.Points(geometry, new THREE.PointsMaterial({ color, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const material = new THREE.PointsMaterial({ color: 0xaebcdf, size: lowPower ? 0.85 : 1.15, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending });
+  return new THREE.Points(geometry, material);
 }
 
-const starfield = new THREE.Group();
-starfield.add(particleField(mobile ? 3200 : 7600, 1300, 0xd7e5ff, mobile ? 0.7 : 0.9, 0.82, 11));
-starfield.add(particleField(mobile ? 700 : 1700, 1050, 0xffc88f, mobile ? 0.8 : 1.0, 0.35, 19));
-scene.add(starfield);
-
-const universe = new THREE.Group();
-scene.add(universe);
-
-const core = new THREE.Group();
-universe.add(core);
-const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xf1f6ff });
-const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(2.1, 36, 24), coreMaterial);
-core.add(coreMesh);
-const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(3.6, 28, 18), new THREE.MeshBasicMaterial({ color: 0x77b7ff, transparent: true, opacity: 0.10, blending: THREE.AdditiveBlending, depthWrite: false }));
-core.add(coreGlow);
-const ring = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.035, 8, 160), new THREE.MeshBasicMaterial({ color: 0x8fb8ff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
-ring.rotation.x = Math.PI * 0.36;
-core.add(ring);
-
-const labels = [
-  ['PROJECTS', 7.0, 0x63a9ff, 'Work, builds and shipped experiments.'],
-  ['EXPERIMENTS', 8.2, 0x80e4c2, 'Things being tested, measured and broken.'],
-  ['IDEAS', 9.4, 0xffbd78, 'Early concepts and strange directions.'],
-  ['NOTES', 10.6, 0xc8a6ff, 'Observations, learning and fragments.'],
-  ['ABOUT', 11.8, 0xe7edf7, 'The person behind RN.'],
-  ['ARCHIVE', 13.0, 0x8da2c5, 'Older work and preserved history.'],
-];
-const orbitGroups = [];
-const selectable = [];
-
-for (let i = 0; i < labels.length; i += 1) {
-  const [name, radius, color, description] = labels[i];
-  const orbit = new THREE.Group();
-  orbit.rotation.y = (i / labels.length) * Math.PI * 2;
-  const linePoints = [];
-  for (let j = 0; j <= 160; j += 1) {
-    const a = (j / 160) * Math.PI * 2;
-    linePoints.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
-  }
-  orbit.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(linePoints), new THREE.LineBasicMaterial({ color: 0x7387aa, transparent: true, opacity: 0.13, depthWrite: false })));
-  const anchor = new THREE.Group();
-  anchor.position.x = radius;
-  orbit.add(anchor);
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.68, 24, 18), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.16, roughness: 0.45 }));
-  anchor.add(mesh);
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.0, 18, 12), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.045, blending: THREE.AdditiveBlending, depthWrite: false }));
-  anchor.add(halo);
-  core.add(orbit);
-  orbitGroups.push({ orbit, speed: 0.04 - i * 0.002 });
-  selectable.push({ mesh, name, description });
+function makeGlow(color, size) {
+  const geometry = new THREE.SphereGeometry(size, 48, 32);
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+    uniforms: { uColor: { value: new THREE.Color(color) } },
+    vertexShader: `varying vec3 vPos;void main(){vPos=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader: `uniform vec3 uColor;varying vec3 vPos;void main(){float a=pow(max(0.0,1.0-length(vPos)),1.6);gl_FragColor=vec4(uColor,a*.55);}`,
+  });
+  return new THREE.Mesh(geometry, material);
 }
 
-function showMessage(text) {
-  toast.textContent = text;
-  toast.classList.add('visible');
-  clearTimeout(showMessage.timer);
-  showMessage.timer = setTimeout(() => toast.classList.remove('visible'), 2000);
+const galaxy = new THREE.Group();
+galaxy.rotation.x = 0.28;
+galaxy.rotation.z = -0.08;
+scene.add(galaxy);
+
+galaxy.add(makeBackgroundStars(lowPower ? 6000 : 15000));
+const starField = makeGalaxyStars(lowPower ? 30000 : 90000);
+galaxy.add(starField.points);
+const dust = makeDust(lowPower ? 7000 : 20000);
+galaxy.add(dust.points);
+const bulge = makeGalaxyStars(lowPower ? 12000 : 30000);
+galaxy.add(bulge.points);
+bulge.points.scale.setScalar(0.22);
+
+const core = new THREE.Mesh(new THREE.SphereGeometry(58, 64, 40), new THREE.MeshBasicMaterial({ color: 0xffdca0, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false }));
+galaxy.add(core);
+const coreGlow1 = makeGlow(0xffb36f, 85);
+galaxy.add(coreGlow1);
+const coreGlow2 = makeGlow(0xffe6c5, 38);
+galaxy.add(coreGlow2);
+galaxy.add(new THREE.PointLight(0xffbb7d, 8, 900, 2));
+
+const armGlowPoints = makeGalaxyStars(lowPower ? 4500 : 12000);
+armGlowPoints.points.scale.setScalar(1.02);
+galaxy.add(armGlowPoints.points);
+
+const spiralHalo = new THREE.Mesh(new THREE.RingGeometry(120, 580, 256, 12), new THREE.MeshBasicMaterial({ color: 0x24477e, transparent: true, opacity: 0.035, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+galaxy.add(spiralHalo);
+
+let running = !reduceMotion;
+let t = 0;
+const clock = new THREE.Clock();
+const scaleNames = ['GALAXY EDGE', 'OUTER DISK', 'SPIRAL ARMS', 'STELLAR FIELDS', 'GALACTIC CORE'];
+
+function updateHUD() {
+  const distance = camera.position.distanceTo(controls.target);
+  const zoom = Math.max(0.2, 980 / distance);
+  zoomReadout.textContent = `ZOOM ${zoom.toFixed(1)}×`;
+  let index = 0;
+  if (distance < 820) index = 1;
+  if (distance < 560) index = 2;
+  if (distance < 300) index = 3;
+  if (distance < 145) index = 4;
+  scaleLabel.textContent = 'MILKY WAY';
+  scaleSub.textContent = scaleNames[index];
+  scaleChip.textContent = index === 0 ? 'GALACTIC VIEW' : `ZOOMING · ${scaleNames[index]}`;
 }
 
-function resetView(animated = true) {
+function resetView() {
   const from = camera.position.clone();
+  const to = new THREE.Vector3(0, 165, 980);
   const fromTarget = controls.target.clone();
-  const to = new THREE.Vector3(0, 7, 24);
-  const target = new THREE.Vector3(0, 0, 0);
-  const duration = reducedMotion || !animated ? 0 : 700;
-  if (!duration) {
-    camera.position.copy(to);
-    controls.target.copy(target);
-    controls.update();
-    return;
-  }
+  const toTarget = new THREE.Vector3(0, 0, 0);
   const start = performance.now();
   const step = (now) => {
-    const p = Math.min(1, (now - start) / duration);
-    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-    camera.position.lerpVectors(from, to, e);
-    controls.target.lerpVectors(fromTarget, target, e);
-    if (p < 1) requestAnimationFrame(step);
+    const progress = Math.min(1, (now - start) / 800);
+    const eased = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    camera.position.lerpVectors(from, to, eased);
+    controls.target.lerpVectors(fromTarget, toTarget, eased);
+    if (progress < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
 }
 
-function pick(clientX, clientY) {
-  const rect = renderer.domElement.getBoundingClientRect();
-  const pointer = new THREE.Vector2(
-    ((clientX - rect.left) / rect.width) * 2 - 1,
-    -((clientY - rect.top) / rect.height) * 2 + 1,
-  );
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObjects(selectable.map((item) => item.mesh), false)[0]?.object || null;
-}
+renderer.domElement.addEventListener('dblclick', resetView);
+helpButton.addEventListener('click', () => helpPanel.classList.toggle('hidden'));
 
-let down = null;
-renderer.domElement.addEventListener('pointerdown', (event) => { down = { x: event.clientX, y: event.clientY }; });
-renderer.domElement.addEventListener('pointerup', (event) => {
-  if (!down) return;
-  if (Math.hypot(event.clientX - down.x, event.clientY - down.y) < 8) {
-    const mesh = pick(event.clientX, event.clientY);
-    const item = selectable.find((entry) => entry.mesh === mesh);
-    if (item) {
-      cardKicker.textContent = `RN SYSTEM · ${item.name}`;
-      cardTitle.textContent = item.name;
-      cardCopy.textContent = item.description;
-      card.classList.remove('hidden');
-      showMessage(`SELECTED · ${item.name}`);
-    }
-  }
-  down = null;
-});
-
-document.getElementById('close').addEventListener('click', () => card.classList.add('hidden'));
-document.getElementById('reset-camera').addEventListener('click', () => resetView(true));
-document.getElementById('help').addEventListener('click', () => showMessage('DRAG TO ORBIT · SCROLL TO ZOOM · TAP AN ORBITING OBJECT'));
-
-const clock = new THREE.Clock();
-let elapsed = 0;
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  elapsed += dt;
-  if (!reducedMotion) {
-    starfield.rotation.y = elapsed * 0.003;
-    starfield.rotation.x = Math.sin(elapsed * 0.08) * 0.006;
-    core.rotation.y = elapsed * 0.08;
-    ring.rotation.z = elapsed * 0.22;
-    coreGlow.scale.setScalar(1 + Math.sin(elapsed * 1.6) * 0.035);
-    orbitGroups.forEach((entry, index) => {
-      entry.orbit.rotation.y += entry.speed * dt;
-      entry.orbit.children[1].rotation.y += (0.8 + index * 0.05) * dt;
-    });
+  const delta = Math.min(0.05, clock.getDelta());
+  if (running) {
+    t += delta;
+    starField.points.rotation.y = t * 0.0007;
+    starField.points.rotation.x = Math.sin(t * 0.12) * 0.003;
+    galaxy.rotation.y = t * 0.0021;
+    starField.material.uniforms.uTime.value = t;
+    armGlowPoints.material.uniforms.uTime.value = t;
+    dust.material.uniforms.uTime.value = t;
+    coreGlow1.scale.setScalar(1 + Math.sin(t * 0.42) * 0.018);
+    coreGlow2.scale.setScalar(1 + Math.sin(t * 0.9) * 0.028);
   }
   controls.update();
-  renderer.render(scene, camera);
+  updateHUD();
+  composer.render();
 }
 
-addEventListener('resize', () => {
+window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  bloom.resolution.set(innerWidth, innerHeight);
 });
 
-loader.classList.add('hidden');
-showMessage('RN UNIVERSE READY');
-resetView(false);
+loader.classList.add('fade');
+setTimeout(() => loader.remove(), 800);
 animate();

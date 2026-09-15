@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js?v=20260915-5');
+const { buildRNSystem } = await import('./scene/system.js?v=20260915-6');
 const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-5');
 const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-5');
 
@@ -122,7 +122,17 @@ if (!canUseWebGL() || !window.THREE) {
     const galaxy = buildMilkyWay(lowPower);
     scene.add(starfield, solar, system.group, galaxy);
 
-    const state = { selected: null, selectedMesh: null, history: [], fly: null, lastScale: 'rn', pointerDown: null };
+    const state = {
+      selected: null,
+      selectedMesh: null,
+      hovered: null,
+      hoveredMesh: null,
+      history: [],
+      fly: null,
+      lastScale: 'rn',
+      pointerDown: null,
+      pointer: { x: 0, y: 0 },
+    };
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const tempVector = new THREE.Vector3();
@@ -216,18 +226,44 @@ if (!canUseWebGL() || !window.THREE) {
       panel.classList.add('open');
     }
 
-    function closePanel(restore) {
-      panel.classList.remove('open');
-      focusLabel.classList.remove('visible');
-      if (restore && state.history.length) {
-        const previous = state.history.pop();
-        beginFly(previous.position.toArray(), previous.target.toArray(), 820);
-      }
-      state.selected = null;
-      state.selectedMesh = null;
+    function setHover(mesh) {
+      if (state.hoveredMesh === mesh) return;
+      clearHover();
+      if (!mesh) return;
+      state.hoveredMesh = mesh;
+      state.hovered = mesh.userData.payload;
+      const payload = mesh.userData.payload;
+      const visual = mesh.userData.visual || mesh;
+      if (visual.scale) visual.scale.setScalar(mesh.userData.baseScale ? mesh.userData.baseScale * 1.18 : 1.18);
+      if (visual.material && 'emissiveIntensity' in visual.material) visual.material.emissiveIntensity = (visual.userData.baseEmissive || 0.65) * 1.8;
+      focusLabel.textContent = payload.label;
+      focusLabel.classList.add('hovering');
+      focusLabel.classList.add('visible');
+    }
+
+    function clearHover() {
+      if (!state.hoveredMesh) return;
+      const mesh = state.hoveredMesh;
+      const visual = mesh.userData.visual || mesh;
+      if (visual.scale) visual.scale.setScalar(mesh.userData.baseScale || 1);
+      if (visual.material && 'emissiveIntensity' in visual.material) visual.material.emissiveIntensity = visual.userData.baseEmissive || 0.65;
+      state.hoveredMesh = null;
+      state.hovered = null;
+      focusLabel.classList.remove('hovering');
+      if (!state.selected) focusLabel.classList.remove('visible');
+    }
+
+    function findSelectable(clientX, clientY) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(scene.children, true);
+      return hits.find((item) => item.object.userData && item.object.userData.selectable && item.object.userData.payload);
     }
 
     function focusObject(payload, mesh) {
+      clearHover();
       const worldPosition = new THREE.Vector3();
       mesh.getWorldPosition(worldPosition);
       state.history.push({ position: camera.position.clone(), target: controls.target.clone() });
@@ -242,17 +278,29 @@ if (!canUseWebGL() || !window.THREE) {
     }
 
     function pickAt(clientX, clientY) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
-      const hit = hits.find((item) => item.object.userData && item.object.userData.selectable && item.object.userData.payload);
+      const hit = findSelectable(clientX, clientY);
       if (hit) focusObject(hit.object.userData.payload, hit.object);
     }
 
-    renderer.domElement.addEventListener('pointerdown', (event) => { state.pointerDown = { x: event.clientX, y: event.clientY }; });
+    function updateHover(clientX, clientY) {
+      if (state.fly || !window.matchMedia('(hover: hover)').matches) return;
+      const hit = findSelectable(clientX, clientY);
+      renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+      setHover(hit ? hit.object : null);
+    }
+
+    renderer.domElement.addEventListener('pointermove', (event) => {
+      state.pointer.x = event.clientX;
+      state.pointer.y = event.clientY;
+      updateHover(event.clientX, event.clientY);
+    });
+    renderer.domElement.addEventListener('pointerleave', () => {
+      renderer.domElement.style.cursor = 'grab';
+      clearHover();
+    });
+    renderer.domElement.addEventListener('pointerdown', (event) => { state.pointerDown = { x: event.clientX, y: event.clientY }; renderer.domElement.style.cursor = 'grabbing'; });
     renderer.domElement.addEventListener('pointerup', (event) => {
+      renderer.domElement.style.cursor = 'grab';
       if (!state.pointerDown) return;
       const distance = Math.hypot(event.clientX - state.pointerDown.x, event.clientY - state.pointerDown.y);
       if (distance < 7) pickAt(event.clientX, event.clientY);
@@ -264,6 +312,7 @@ if (!canUseWebGL() || !window.THREE) {
       const destination = SCALE_DATA[button.dataset.scale];
       state.history = [];
       closePanel(false);
+      clearHover();
       beginFly(destination.position, destination.target, 1100);
     }));
     panelClose.addEventListener('click', () => closePanel(true));
@@ -274,13 +323,26 @@ if (!canUseWebGL() || !window.THREE) {
       if (event.key === '3') beginFly(SCALE_DATA.galaxy.position, SCALE_DATA.galaxy.target, 1100);
     });
 
+    function closePanel(restore) {
+      panel.classList.remove('open');
+      focusLabel.classList.remove('visible');
+      if (restore && state.history.length) {
+        const previous = state.history.pop();
+        beginFly(previous.position.toArray(), previous.target.toArray(), 820);
+      }
+      state.selected = null;
+      state.selectedMesh = null;
+    }
+
     function updateFocusLabel() {
-      if (!state.selected || !state.selectedMesh || !panel.classList.contains('open')) return;
-      state.selectedMesh.getWorldPosition(tempVector);
+      const mesh = state.selectedMesh || state.hoveredMesh;
+      if (!mesh) return;
+      mesh.getWorldPosition(tempVector);
       tempVector.project(camera);
       const visible = tempVector.z > -1 && tempVector.z < 1;
       if (!visible) { focusLabel.classList.remove('visible'); return; }
-      focusLabel.textContent = state.selected.label;
+      const payload = state.selected || state.hovered;
+      focusLabel.textContent = payload ? payload.label : '';
       focusLabel.style.left = ((tempVector.x * 0.5 + 0.5) * window.innerWidth) + 'px';
       focusLabel.style.top = ((-tempVector.y * 0.5 + 0.5) * window.innerHeight) + 'px';
       focusLabel.classList.add('visible');
@@ -301,7 +363,11 @@ if (!canUseWebGL() || !window.THREE) {
       const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 130, 560);
       const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
       galaxy.traverse((object) => {
-        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) { const opacity = object.material.userData.baseOpacity * galaxyFade; object.material.opacity = opacity; if (object.material.uniforms && object.material.uniforms.uOpacity) object.material.uniforms.uOpacity.value = opacity; }
+        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) {
+          const opacity = object.material.userData.baseOpacity * galaxyFade;
+          object.material.opacity = opacity;
+          if (object.material.uniforms && object.material.uniforms.uOpacity) object.material.uniforms.uOpacity.value = opacity;
+        }
       });
       system.group.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.rnOrbit) object.material.opacity = object.material.userData.baseOpacity * rnOrbitFade;
@@ -321,6 +387,7 @@ if (!canUseWebGL() || !window.THREE) {
     });
 
     requestAnimationFrame(() => {
+      renderer.domElement.style.cursor = 'grab';
       loader.classList.add('hidden');
       animate();
     });

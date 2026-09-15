@@ -3,9 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js?v=20260914-3');
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260914-3');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260914-3');
+const { buildRNSystem } = await import('./scene/system.js?v=20260915-4');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-4');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-4');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');
@@ -78,7 +78,7 @@ if (!canUseWebGL() || !window.THREE) {
     scene.add(rim);
 
     function buildBackgroundStars() {
-      const count = lowPower ? 900 : 2200;
+      const count = lowPower ? 1500 : 3400;
       const positions = [];
       let seed = 81;
       const next = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
@@ -90,7 +90,7 @@ if (!canUseWebGL() || !window.THREE) {
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.4 : 5.4, opacity: 0.62 }));
+      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 8.0 : 9.0, opacity: 0.86 }));
     }
 
     function buildSolarNeighborhood() {
@@ -298,7 +298,7 @@ if (!canUseWebGL() || !window.THREE) {
       system.core.group.rotation.y = elapsed * 0.06;
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
       galaxy.rotation.y = elapsed * 0.004;
-      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 230, 760);
+      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 130, 560);
       const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
       galaxy.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) { const opacity = object.material.userData.baseOpacity * galaxyFade; object.material.opacity = opacity; if (object.material.uniforms && object.material.uniforms.uOpacity) object.material.uniforms.uOpacity.value = opacity; }

@@ -1,43 +1,29 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#03050a" />
-  <meta name="description" content="RN Universe by Aryan Bhagwan Patil." />
-  <title>RN UNIVERSE · RIGHT NOW</title>
-  <link rel="stylesheet" href="./src/styles.css?v=reset-2" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>RN UNIVERSE · RIGHT NOW</title>
+<meta name="description" content="RN Universe, an interactive deep-space experience by Aryan Bhagwan Patil." />
+<link rel="stylesheet" href="./src/styles.css?v=20260915-galaxy1" />
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
-  <main id="app">
-    <div id="space" aria-label="RN Universe 3D space"></div>
-    <div id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">STARTING 3D SPACE</div></div>
-    <header class="topbar">
-      <div class="brand"><strong>RN</strong><span>UNIVERSE</span></div>
-      <button id="reset-camera" type="button">RESET VIEW</button>
-      <button id="help" type="button">?</button>
-    </header>
-    <div class="hud"><span>DRAG</span><i>ORBIT</i><span>SCROLL</span><i>ZOOM</i><span>TAP</span><i>SELECT</i></div>
-    <section id="card" class="card hidden">
-      <button id="close" class="close" type="button" aria-label="Close">×</button>
-      <div id="card-kicker">RN OBJECT</div>
-      <h1 id="card-title"></h1>
-      <p id="card-copy"></p>
-    </section>
-    <div id="toast" class="toast"></div>
-  </main>
-  <script>
-    window.addEventListener('error', function (event) {
-      const loader = document.getElementById('loader');
-      const toast = document.getElementById('toast');
-      if (loader) loader.classList.add('hidden');
-      if (toast) {
-        toast.textContent = '3D ERROR · RELOAD';
-        toast.classList.add('visible');
-      }
-      console.error(event.error || event.message);
-    });
-  </script>
-  <script type="module" src="./src/main.js?v=reset-2"></script>
+<div id="app">
+  <div id="space" aria-label="Interactive RN Universe"></div>
+  <div class="vignette"></div>
+  <header class="hud">
+    <div class="brand"><span>RN</span><small>UNIVERSE</small></div>
+    <div class="hud-center"><span id="scale-label">MILKY WAY</span><small id="scale-sub">DEEP SPACE</small></div>
+    <button id="help" class="hud-button" type="button">HOW TO EXPLORE</button>
+  </header>
+  <div class="hint" id="hint">DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</div>
+  <div class="scale-chip" id="scale-chip">GALACTIC VIEW</div>
+  <div class="zoom-readout" id="zoom-readout">ZOOM 1.0×</div>
+  <div class="help-panel hidden" id="help-panel"><b>EXPLORE</b><p>Drag to rotate the galaxy. Scroll or pinch to move through space. Double tap the center to return to the full galaxy.</p></div>
+  <div class="loader" id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">BUILDING THE GALAXY</div></div>
+</div>
+<script type="module" src="./src/main.js?v=20260915-galaxy1"></script>
 </body>
 </html>

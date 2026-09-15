@@ -37,6 +37,7 @@ function makeNode(node) {
   body.position.set(node.orbit, 0, 0);
   body.userData.payload = node;
   body.userData.selectable = true;
+  body.userData.kind = 'node';
 
   const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(node.size, 24, 16),
@@ -44,13 +45,25 @@ function makeNode(node) {
   );
   sphere.userData.payload = node;
   sphere.userData.selectable = true;
+  sphere.userData.baseScale = 1;
+  sphere.userData.baseEmissive = 0.65;
   body.add(sphere);
 
   const aura = new THREE.Mesh(
     new THREE.SphereGeometry(node.size * 1.65, 16, 12),
     new THREE.MeshBasicMaterial({ color: node.color, transparent: true, opacity: 0.055, blending: THREE.AdditiveBlending, depthWrite: false })
   );
+  aura.userData.baseOpacity = 0.055;
   body.add(aura);
+
+  const hitSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(Math.max(node.size * 2.15, 0.72), 16, 12),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  hitSphere.userData.payload = node;
+  hitSphere.userData.selectable = true;
+  hitSphere.userData.interaction = true;
+  body.add(hitSphere);
 
   const moons = [];
   const moonCount = node.id === 'projects' ? 3 : node.id === 'experiments' ? 2 : 1;
@@ -61,7 +74,7 @@ function makeNode(node) {
   line.rotation.z = node.tilt;
   line.userData.systemDecor = true;
   orbit.add(line);
-  return { orbit, body, sphere, moons };
+  return { orbit, body, sphere, aura, hitSphere, moons };
 }
 
 function makeCore(core) {
@@ -72,6 +85,8 @@ function makeCore(core) {
   );
   star.userData.payload = core;
   star.userData.selectable = true;
+  star.userData.baseScale = 1;
+  star.userData.baseEmissive = 2.2;
   group.add(star);
 
   const corona = new THREE.Mesh(
@@ -80,6 +95,15 @@ function makeCore(core) {
   );
   group.add(corona);
   group.add(new THREE.PointLight(0xffc66b, 10, 28, 2));
+
+  const hitSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(1.9, 20, 14),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  hitSphere.userData.payload = core;
+  hitSphere.userData.selectable = true;
+  hitSphere.userData.interaction = true;
+  group.add(hitSphere);
 
   for (let i = 0; i < 3; i += 1) {
     const ring = new THREE.Mesh(
@@ -90,7 +114,7 @@ function makeCore(core) {
     ring.rotation.z = i * 0.65;
     group.add(ring);
   }
-  return { group, star, corona };
+  return { group, star, corona, hitSphere };
 }
 
 export function buildRNSystem(data) {

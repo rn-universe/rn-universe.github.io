@@ -1,5 +1,5 @@
 const THREE = window.THREE;
-import { makeCircularPointsMaterial } from './particles.js?v=20260914-3';
+import { makeCircularPointsMaterial } from './particles.js?v=20260915-4';
 
 function randomFactory(seed) {
   let value = seed;
@@ -38,7 +38,7 @@ export function buildMilkyWay(lowPower) {
     const y = (random() - 0.5) * (18 + radius * 0.045);
     stars.push(x, y, z);
   }
-  group.add(createPoints(stars, 0xb7d8ff, lowPower ? 4.2 : 5.4, 0.72, THREE.AdditiveBlending));
+  group.add(createPoints(stars, 0xb7d8ff, lowPower ? 5.4 : 6.8, 0.72, THREE.AdditiveBlending));
 
   const bulge = [];
   const bulgeCount = lowPower ? 500 : 1200;
@@ -47,7 +47,7 @@ export function buildMilkyWay(lowPower) {
     const angle = random() * Math.PI * 2;
     bulge.push(Math.cos(angle) * radius, (random() - 0.5) * (70 - radius * 0.45), Math.sin(angle) * radius);
   }
-  group.add(createPoints(bulge, 0xffd9a0, lowPower ? 5.2 : 6.6, 0.34, THREE.AdditiveBlending));
+  group.add(createPoints(bulge, 0xffd9a0, lowPower ? 6.0 : 7.4, 0.34, THREE.AdditiveBlending));
 
   const dust = [];
   const dustCount = lowPower ? 650 : 1500;
@@ -57,7 +57,7 @@ export function buildMilkyWay(lowPower) {
     const angle = arm * (Math.PI * 2 / arms) + radius * 0.0082 + (random() - 0.5) * 0.45;
     dust.push(Math.cos(angle) * radius, (random() - 0.5) * 16, Math.sin(angle) * radius);
   }
-  group.add(createPoints(dust, 0x6f78a8, lowPower ? 3.8 : 4.6, 0.06, THREE.NormalBlending));
+  group.add(createPoints(dust, 0x6f78a8, lowPower ? 4.2 : 5.0, 0.06, THREE.NormalBlending));
 
   const halo = new THREE.Mesh(
     new THREE.SphereGeometry(910, 32, 16),

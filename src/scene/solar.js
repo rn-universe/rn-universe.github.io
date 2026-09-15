@@ -30,7 +30,7 @@ function ring(radius, tube, color, opacity = 0.42, rotation = 0) {
   return mesh;
 }
 
-function createPlanet(definition, sunLight) {
+function createPlanet(definition) {
   const orbit = new THREE.Group();
   orbit.rotation.y = definition.phase;
   orbit.rotation.z = definition.inclination;
@@ -108,14 +108,14 @@ export function buildSolarSystem(lowPower) {
     { name: 'NEPTUNE', distance: 156, radius: 1.14, color: 0x3f68bb, roughness: 0.82, speed: 0.0017, phase: 5.7, inclination: 0.015, axialTilt: 0.49, atmosphere: 0x5d9aff },
   ];
 
-  const built = planets.map((planet) => createPlanet(planet, sunLight));
+  const built = planets.map((planet) => createPlanet(planet));
   built.forEach((planet) => group.add(planet.orbit));
 
   const belt = new THREE.Group();
   const beltPoints = [];
   let seed = 901;
   const next = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
-  const beltCount = lowPower ? 180 : 420;
+  const beltCount = lowPower ? 260 : 650;
   for (let i = 0; i < beltCount; i += 1) {
     const r = 46 + next() * 11;
     const a = next() * Math.PI * 2;
@@ -123,8 +123,19 @@ export function buildSolarSystem(lowPower) {
   }
   const beltGeo = new THREE.BufferGeometry();
   beltGeo.setAttribute('position', new THREE.Float32BufferAttribute(beltPoints, 3));
-  belt.add(new THREE.Points(beltGeo, new THREE.PointsMaterial({ color: 0xb7a58c, size: lowPower ? 0.26 : 0.34, transparent: true, opacity: 0.45, depthWrite: false })));
+  belt.add(new THREE.Points(beltGeo, new THREE.PointsMaterial({ color: 0xb7a58c, size: lowPower ? 0.23 : 0.32, transparent: true, opacity: 0.48, depthWrite: false })));
   group.add(belt);
+
+  const comet = new THREE.Group();
+  comet.name = 'PERIODIC_COMET';
+  const cometHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshBasicMaterial({ color: 0xe8f3ff, transparent: true, opacity: 0.95 }));
+  const cometGlow = new THREE.Mesh(new THREE.SphereGeometry(0.68, 12, 8), new THREE.MeshBasicMaterial({ color: 0x8fd7ff, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const tail = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-7, 0.35, 0)]),
+    new THREE.LineBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.34 })
+  );
+  comet.add(cometHead, cometGlow, tail);
+  group.add(comet);
 
   group.userData.advance = (elapsed) => {
     built.forEach((item, index) => {
@@ -135,7 +146,13 @@ export function buildSolarSystem(lowPower) {
     sun.rotation.y = elapsed * 0.03;
     glow.scale.setScalar(1 + Math.sin(elapsed * 1.1) * 0.025);
     belt.rotation.y = elapsed * 0.00065;
+
+    const cometAngle = elapsed * 0.0045;
+    const cometRadius = 82 + Math.sin(elapsed * 0.0045) * 48;
+    comet.position.set(Math.cos(cometAngle) * cometRadius, Math.sin(elapsed * 0.009) * 4.5, Math.sin(cometAngle) * cometRadius);
+    comet.rotation.y = cometAngle + Math.PI * 0.5;
+    const pulse = 1 + Math.sin(elapsed * 2.7) * 0.09;
+    cometGlow.scale.setScalar(pulse);
   };
-  group.userData.baseOrbitOpacity = 0.1;
   return group;
 }

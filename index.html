@@ -15,7 +15,7 @@
   <meta name="twitter:description" content="An explorable working universe of projects, experiments, ideas and observations." />
   <link rel="canonical" href="https://rn-universe.github.io/" />
   <title>RN SYSTEM · Aryan Bhagwan Patil</title>
-  <link rel="stylesheet" href="./src/styles.css?v=20260915-8" />
+  <link rel="stylesheet" href="./src/styles.css?v=20260915-7" />
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -24,10 +24,8 @@
     <div id="space" aria-label="Interactive 3D RN SYSTEM environment"></div>
     <div id="ui">
       <header class="brand" aria-label="RN SYSTEM"><div class="brand-mark">RN</div><div class="brand-sub">SYSTEM</div><div class="brand-line"></div></header>
-      <div class="live-status" aria-label="System status"><span class="live-dot" aria-hidden="true"></span><span>LIVE</span><span class="live-divider">·</span><span>WEBGL</span></div>
       <nav class="scale-nav" aria-label="Scale navigation"><button class="scale-btn active" data-scale="rn" type="button">RN SYSTEM</button><button class="scale-btn" data-scale="solar" type="button">SOLAR</button><button class="scale-btn" data-scale="galaxy" type="button">MILKY WAY</button></nav>
       <div class="scale-readout" aria-live="polite"><span id="scale-name" class="scale-name">RN SYSTEM</span><span id="scale-detail" class="scale-detail">close orbit</span></div>
-      <div class="journey-hint" aria-hidden="true"><span class="journey-key">1</span><span>RN</span><span class="journey-arrow">→</span><span class="journey-key">2</span><span>SOLAR</span><span class="journey-arrow">→</span><span class="journey-key">3</span><span>MILKY WAY</span></div>
       <div class="instructions">DRAG <span>·</span> ZOOM <span>·</span> EXPLORE</div>
       <div id="focus-label" aria-hidden="true"></div>
       <aside id="panel" aria-live="polite" aria-label="Selected system object"><button id="panel-close" class="panel-close" type="button" aria-label="Close information panel">×</button><div id="panel-kicker" class="panel-kicker"></div><h2 id="panel-title" class="panel-title"></h2><p id="panel-description" class="panel-description"></p><div id="panel-fields" class="panel-fields"></div><div id="panel-extra"></div><div class="panel-footer">SELECT A DIFFERENT ORBIT TO CONTINUE</div></aside>
@@ -51,6 +49,6 @@
       if (fallback) fallback.classList.add('visible');
     });
   </script>
-  <script type="module" src="./src/main.js?v=20260915-7"></script>
+  <script type="module" src="./src/main.js?v=20260915-8"></script>
 </body>
 </html>

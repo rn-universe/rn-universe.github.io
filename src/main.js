@@ -1,425 +1,114 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
-window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js?v=20260915-7');
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-7');
-const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-3');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-7');
+const { buildRNSystem } = await import('./scene/system.js?v=20260915-8');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-8');
+const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-4');
 
 const root = document.getElementById('space');
-const fallback = document.getElementById('fallback');
 const loader = document.getElementById('loader');
-const panel = document.getElementById('panel');
-const panelClose = document.getElementById('panel-close');
-const panelKicker = document.getElementById('panel-kicker');
-const panelTitle = document.getElementById('panel-title');
-const panelDescription = document.getElementById('panel-description');
-const panelFields = document.getElementById('panel-fields');
-const panelExtra = document.getElementById('panel-extra');
-const focusLabel = document.getElementById('focus-label');
-const scaleName = document.getElementById('scale-name');
-const scaleDetail = document.getElementById('scale-detail');
-const scaleButtons = [...document.querySelectorAll('[data-scale]')];
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const lowPower = window.matchMedia('(max-width: 700px)').matches || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+const objectCard = document.getElementById('object-card');
+const objectTitle = document.getElementById('object-title');
+const objectKicker = document.getElementById('object-kicker');
+const objectDescription = document.getElementById('object-description');
+const objectMeta = document.getElementById('object-meta');
+const toast = document.getElementById('toast');
+const simTime = document.getElementById('sim-time');
+const lowPower = window.matchMedia('(max-width: 700px)').matches || (navigator.hardwareConcurrency || 8) <= 4;
 
-function showFallback() {
-  loader.classList.add('hidden');
-  fallback.classList.add('visible');
-}
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x03050a);
+const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.04, 10000);
+camera.position.set(14, 9, 26);
+const renderer = new THREE.WebGLRenderer({ antialias: !lowPower, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.8));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+root.appendChild(renderer.domElement);
 
-function canUseWebGL() {
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
-  } catch (error) { return false; }
-}
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.045;
+controls.enablePan = true;
+controls.screenSpacePanning = true;
+controls.rotateSpeed = lowPower ? 0.42 : 0.58;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 1.3;
+controls.maxDistance = 3600;
+if ('zoomToCursor' in controls) controls.zoomToCursor = true;
+scene.add(new THREE.HemisphereLight(0x7d8eb7, 0x02030a, 0.38));
+const sunRim = new THREE.DirectionalLight(0x9ebdff, 0.46); sunRim.position.set(12, 20, 18); scene.add(sunRim);
 
-if (!canUseWebGL() || !window.THREE) {
-  showFallback();
-} else {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x02030a);
-  scene.fog = new THREE.FogExp2(0x02030a, 0.00018);
-  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.08, 5000);
-
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ antialias: !lowPower, alpha: false, powerPreference: 'high-performance' });
-  } catch (error) {
-    showFallback();
+function makeStars(count, radius, color, size, opacity) {
+  const positions = new Float32Array(count * 3);
+  let seed = 1837 + count;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  for (let i = 0; i < count; i += 1) {
+    const r = radius * (0.45 + rnd() * 0.55); const a = rnd() * Math.PI * 2; const z = (rnd() * 2 - 1) * r; const rr = Math.sqrt(Math.max(0, r * r - z * z));
+    positions[i * 3] = Math.cos(a) * rr; positions[i * 3 + 1] = z; positions[i * 3 + 2] = Math.sin(a) * rr;
   }
-
-  if (renderer) {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.25 : 1.7));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
-    root.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.055;
-    controls.enablePan = true;
-    controls.screenSpacePanning = true;
-    controls.minDistance = 0.78;
-    controls.maxDistance = 2700;
-    controls.rotateSpeed = lowPower ? 0.42 : 0.52;
-    controls.zoomSpeed = 0.72;
-    if ('zoomToCursor' in controls) controls.zoomToCursor = true;
-
-    scene.add(new THREE.HemisphereLight(0x7f9dd8, 0x05060d, 0.5));
-    const rim = new THREE.DirectionalLight(0x9dbdff, 0.55);
-    rim.position.set(-7, 14, 12);
-    scene.add(rim);
-
-    function buildBackgroundStars() {
-      const count = lowPower ? 2300 : 6200;
-      const positions = [];
-      let seed = 81;
-      const next = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-      for (let i = 0; i < count; i += 1) {
-        const radius = 850 + next() * 2200;
-        const theta = next() * Math.PI * 2;
-        const phi = Math.acos(2 * next() - 1);
-        positions.push(radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta));
-      }
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      const points = new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.1 : 5.2, opacity: 0.9 }));
-      points.name = 'DEEP_SPACE_STARS';
-      points.userData.advance = (elapsed) => {
-        points.rotation.y = elapsed * 0.00028;
-        points.rotation.x = Math.sin(elapsed * 0.025) * 0.002;
-      };
-      return points;
-    }
-
-    const starfield = buildBackgroundStars();
-    const galaxy = buildMilkyWay(lowPower);
-    const solar = buildSolarSystem(lowPower);
-    const system = buildRNSystem(SYSTEM_DATA);
-
-    // The hierarchy is now physically nested:
-    // MILKY WAY (0,0,0) -> SOLAR NEIGHBORHOOD -> SOLAR SYSTEM -> RN SYSTEM.
-    const solarAnchor = new THREE.Group();
-    solarAnchor.name = 'SOLAR_NEIGHBORHOOD';
-    solarAnchor.position.copy(galaxy.userData.solarNeighborhood || new THREE.Vector3(0, 0, 470));
-
-    const rnAnchor = new THREE.Group();
-    rnAnchor.name = 'RN_SYSTEM_ANCHOR';
-    solarAnchor.add(solar, rnAnchor);
-    rnAnchor.add(system.group);
-    galaxy.add(solarAnchor);
-    scene.add(starfield, galaxy);
-
-    const solarWorldPosition = () => solarAnchor.getWorldPosition(new THREE.Vector3());
-
-    function getScaleDestination(scale) {
-      const definition = SCALE_DATA[scale];
-      const anchor = solarWorldPosition();
-      if (scale === 'galaxy') {
-        return {
-          position: new THREE.Vector3(...definition.position),
-          target: new THREE.Vector3(...definition.target),
-        };
-      }
-      return {
-        position: anchor.clone().add(new THREE.Vector3(...definition.position)),
-        target: anchor.clone().add(new THREE.Vector3(...definition.target)),
-      };
-    }
-
-    const initial = getScaleDestination('rn');
-    camera.position.copy(initial.position);
-    controls.target.copy(initial.target);
-    controls.update();
-
-    const state = {
-      selected: null,
-      selectedMesh: null,
-      hovered: null,
-      hoveredMesh: null,
-      history: [],
-      fly: null,
-      lastScale: 'rn',
-      pointerDown: null,
-      pointer: { x: 0, y: 0 },
-    };
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const tempVector = new THREE.Vector3();
-    const clock = new THREE.Clock();
-
-    function easeInOut(value) {
-      return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
-    }
-
-    function updateScaleReadout() {
-      const center = solarWorldPosition();
-      const solarDistance = camera.position.distanceTo(center);
-      const galaxyDistance = camera.position.length();
-      const scale = solarDistance < 34 ? 'rn' : solarDistance < 430 ? 'solar' : galaxyDistance < 1220 ? 'galaxy' : 'galaxy';
-      const details = { rn: 'close orbit', solar: 'wider perspective', galaxy: 'outer boundary' };
-      scaleName.textContent = scale === 'rn' ? 'RN SYSTEM' : scale === 'solar' ? 'SOLAR SYSTEM' : 'MILKY WAY';
-      scaleDetail.textContent = details[scale];
-      if (state.lastScale !== scale) {
-        state.lastScale = scale;
-        scaleButtons.forEach((button) => button.classList.toggle('active', button.dataset.scale === scale));
-      }
-    }
-
-    function beginFly(position, target, duration) {
-      state.fly = { fromPosition: camera.position.clone(), fromTarget: controls.target.clone(), toPosition: new THREE.Vector3(...position), toTarget: new THREE.Vector3(...target), start: performance.now(), duration: reducedMotion ? 30 : duration };
-      controls.enabled = false;
-    }
-
-    function finishFly() {
-      if (!state.fly) return;
-      camera.position.copy(state.fly.toPosition);
-      controls.target.copy(state.fly.toTarget);
-      state.fly = null;
-      controls.enabled = true;
-      controls.update();
-    }
-
-    function stepFly(now) {
-      if (!state.fly) return;
-      const progress = Math.min(1, (now - state.fly.start) / state.fly.duration);
-      const eased = easeInOut(progress);
-      camera.position.lerpVectors(state.fly.fromPosition, state.fly.toPosition, eased);
-      controls.target.lerpVectors(state.fly.fromTarget, state.fly.toTarget, eased);
-      if (progress >= 1) finishFly();
-    }
-
-    function makeField(label, value) {
-      const item = document.createElement('div');
-      const key = document.createElement('div');
-      key.className = 'panel-field-label';
-      key.textContent = label;
-      const val = document.createElement('div');
-      val.className = 'panel-field-value';
-      val.textContent = value;
-      item.append(key, val);
-      return item;
-    }
-
-    function makeLink(label, href) {
-      const link = document.createElement('a');
-      link.textContent = label;
-      link.href = href;
-      if (href !== '#') { link.target = '_blank'; link.rel = 'noreferrer'; }
-      return link;
-    }
-
-    function renderPanel(payload) {
-      panelKicker.textContent = payload.kicker || 'SYSTEM OBJECT';
-      panelTitle.textContent = payload.title || payload.label;
-      panelDescription.textContent = payload.description || '';
-      panelFields.replaceChildren();
-      (payload.fields || []).forEach(([label, value]) => panelFields.appendChild(makeField(label, value)));
-      panelExtra.replaceChildren();
-
-      if (payload.projects) {
-        payload.projects.forEach((project) => {
-          const item = document.createElement('section');
-          item.className = 'panel-project';
-          const name = document.createElement('div'); name.className = 'project-name'; name.textContent = project.name;
-          const meta = document.createElement('div'); meta.className = 'project-meta'; meta.textContent = project.date + '  ·  ' + project.technologies;
-          const description = document.createElement('p'); description.className = 'project-description'; description.textContent = project.description;
-          const links = document.createElement('div'); links.className = 'panel-links'; links.append(makeLink('OPEN', project.url), makeLink('GITHUB', project.github));
-          item.append(name, meta, description, links); panelExtra.appendChild(item);
-        });
-      }
-
-      const listItems = payload.experiments || payload.ideas || payload.notes || payload.archive;
-      if (listItems) {
-        const list = document.createElement('ul'); list.className = 'panel-list';
-        listItems.forEach((item) => { const li = document.createElement('li'); li.textContent = item; list.appendChild(li); });
-        panelExtra.appendChild(list);
-      }
-      panel.classList.add('open');
-    }
-
-    function setHover(mesh) {
-      if (state.hoveredMesh === mesh) return;
-      clearHover();
-      if (!mesh) return;
-      state.hoveredMesh = mesh;
-      state.hovered = mesh.userData.payload;
-      const payload = mesh.userData.payload;
-      const visual = mesh.userData.visual || mesh;
-      if (visual.scale) visual.scale.setScalar(mesh.userData.baseScale ? mesh.userData.baseScale * 1.18 : 1.18);
-      if (visual.material && 'emissiveIntensity' in visual.material) visual.material.emissiveIntensity = (visual.userData.baseEmissive || 0.65) * 1.8;
-      focusLabel.textContent = payload.label;
-      focusLabel.classList.add('hovering');
-      focusLabel.classList.add('visible');
-    }
-
-    function clearHover() {
-      if (!state.hoveredMesh) return;
-      const mesh = state.hoveredMesh;
-      const visual = mesh.userData.visual || mesh;
-      if (visual.scale) visual.scale.setScalar(mesh.userData.baseScale || 1);
-      if (visual.material && 'emissiveIntensity' in visual.material) visual.material.emissiveIntensity = visual.userData.baseEmissive || 0.65;
-      state.hoveredMesh = null;
-      state.hovered = null;
-      focusLabel.classList.remove('hovering');
-      if (!state.selected) focusLabel.classList.remove('visible');
-    }
-
-    function findSelectable(clientX, clientY) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
-      return hits.find((item) => item.object.userData && item.object.userData.selectable && item.object.userData.payload);
-    }
-
-    function focusObject(payload, mesh) {
-      clearHover();
-      const worldPosition = new THREE.Vector3();
-      mesh.getWorldPosition(worldPosition);
-      state.history.push({ position: camera.position.clone(), target: controls.target.clone() });
-      state.selected = payload;
-      state.selectedMesh = mesh;
-      renderPanel(payload);
-      const direction = camera.position.clone().sub(worldPosition);
-      if (direction.lengthSq() < 0.01) direction.set(0.35, 0.3, 1);
-      direction.normalize();
-      const distance = payload.kind === 'core' ? 6.7 : Math.max(4.7, (payload.size || 0.4) * 8.5);
-      beginFly(worldPosition.clone().add(direction.multiplyScalar(distance)).toArray(), worldPosition.toArray(), 920);
-    }
-
-    function pickAt(clientX, clientY) {
-      const hit = findSelectable(clientX, clientY);
-      if (hit) focusObject(hit.object.userData.payload, hit.object);
-    }
-
-    function updateHover(clientX, clientY) {
-      if (state.fly || !window.matchMedia('(hover: hover)').matches) return;
-      const hit = findSelectable(clientX, clientY);
-      renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
-      setHover(hit ? hit.object : null);
-    }
-
-    renderer.domElement.addEventListener('pointermove', (event) => {
-      state.pointer.x = event.clientX;
-      state.pointer.y = event.clientY;
-      updateHover(event.clientX, event.clientY);
-    });
-    renderer.domElement.addEventListener('pointerleave', () => {
-      renderer.domElement.style.cursor = 'grab';
-      clearHover();
-    });
-    renderer.domElement.addEventListener('pointerdown', (event) => { state.pointerDown = { x: event.clientX, y: event.clientY }; renderer.domElement.style.cursor = 'grabbing'; });
-    renderer.domElement.addEventListener('pointerup', (event) => {
-      renderer.domElement.style.cursor = 'grab';
-      if (!state.pointerDown) return;
-      const distance = Math.hypot(event.clientX - state.pointerDown.x, event.clientY - state.pointerDown.y);
-      if (distance < 7) pickAt(event.clientX, event.clientY);
-      state.pointerDown = null;
-    });
-    renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
-
-    function goToScale(scale, duration = 1100) {
-      const destination = getScaleDestination(scale);
-      state.history = [];
-      closePanel(false);
-      clearHover();
-      beginFly(destination.position.toArray(), destination.target.toArray(), duration);
-    }
-
-    scaleButtons.forEach((button) => button.addEventListener('click', () => goToScale(button.dataset.scale)));
-    panelClose.addEventListener('click', () => closePanel(true));
-    window.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closePanel(true);
-      if (event.key === '1') goToScale('rn', 900);
-      if (event.key === '2') goToScale('solar', 1000);
-      if (event.key === '3') goToScale('galaxy', 1100);
-    });
-
-    function closePanel(restore) {
-      panel.classList.remove('open');
-      focusLabel.classList.remove('visible');
-      if (restore && state.history.length) {
-        const previous = state.history.pop();
-        beginFly(previous.position.toArray(), previous.target.toArray(), 820);
-      }
-      state.selected = null;
-      state.selectedMesh = null;
-    }
-
-    function updateFocusLabel() {
-      const mesh = state.selectedMesh || state.hoveredMesh;
-      if (!mesh) return;
-      mesh.getWorldPosition(tempVector);
-      tempVector.project(camera);
-      const visible = tempVector.z > -1 && tempVector.z < 1;
-      if (!visible) { focusLabel.classList.remove('visible'); return; }
-      const payload = state.selected || state.hovered;
-      focusLabel.textContent = payload ? payload.label : '';
-      focusLabel.style.left = ((tempVector.x * 0.5 + 0.5) * window.innerWidth) + 'px';
-      focusLabel.style.top = ((-tempVector.y * 0.5 + 0.5) * window.innerHeight) + 'px';
-      focusLabel.classList.add('visible');
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
-      stepFly(performance.now());
-      if (starfield.userData.advance) starfield.userData.advance(elapsed);
-      system.nodes.forEach((node) => {
-        node.orbit.rotation.y += node.data.speed;
-        node.sphere.rotation.y += 0.002;
-        node.moons.forEach((moon) => { moon.pivot.rotation.y += moon.speed; });
-      });
-      system.core.group.rotation.y = elapsed * 0.06;
-      system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
-      if (galaxy.userData.advance) galaxy.userData.advance(elapsed, 0);
-      if (solar.userData.advance) solar.userData.advance(elapsed);
-
-      const galaxyDistance = camera.position.length();
-      const solarDistance = camera.position.distanceTo(solarWorldPosition());
-      const galaxyFade = THREE.MathUtils.smoothstep(galaxyDistance, 90, 620);
-      const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(solarDistance, 22, 160);
-      const solarFade = 1 - THREE.MathUtils.smoothstep(solarDistance, 165, 445);
-
-      galaxy.traverse((object) => {
-        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) {
-          const opacity = object.material.userData.baseOpacity * galaxyFade;
-          object.material.opacity = opacity;
-          if (object.material.uniforms && object.material.uniforms.uOpacity) object.material.uniforms.uOpacity.value = opacity;
-        }
-      });
-      system.group.traverse((object) => {
-        if (object.material && object.material.userData && object.material.userData.rnOrbit) object.material.opacity = object.material.userData.baseOpacity * rnOrbitFade;
-      });
-      solar.traverse((object) => {
-        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) object.material.opacity = object.material.userData.baseOpacity * solarFade;
-      });
-
-      if (!state.fly) controls.update();
-      updateScaleReadout();
-      updateFocusLabel();
-      renderer.render(scene, camera);
-    }
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.25 : 1.7));
-    });
-
-    requestAnimationFrame(() => {
-      renderer.domElement.style.cursor = 'grab';
-      loader.classList.add('hidden');
-      animate();
-    });
-  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
 }
+const backgroundStars = new THREE.Group();
+backgroundStars.add(makeStars(lowPower ? 5200 : 13500, 3000, 0xc7d8ff, lowPower ? 0.65 : 0.85, 0.82));
+backgroundStars.add(makeStars(lowPower ? 900 : 2200, 2400, 0xffc88f, lowPower ? 0.72 : 0.92, 0.42));
+scene.add(backgroundStars);
+
+const galaxy = buildMilkyWay(lowPower); scene.add(galaxy);
+const solar = buildSolarSystem(lowPower);
+const solarAnchor = new THREE.Group(); solarAnchor.position.copy(galaxy.userData.solarNeighborhood || new THREE.Vector3(0, 0, 470)); solarAnchor.add(solar); galaxy.add(solarAnchor);
+const system = buildRNSystem({ name: 'RN', mark: 'RN', title: 'RIGHT NOW', statement: 'A living field of work, experiments and observations.' });
+const rnAnchor = new THREE.Group(); rnAnchor.add(system.group); solar.add(rnAnchor);
+
+const selectable = []; let selected = null; let motionEnabled = true; let timeRate = 1; let timeSeconds = 0; let freeFly = false;
+const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); const clock = new THREE.Clock();
+const labelSprites = []; const keys = { w:false,a:false,s:false,d:false,q:false,e:false }; let shiftDown = false;
+
+function labelTexture(text) { const c=document.createElement('canvas'); c.width=640; c.height=128; const x=c.getContext('2d'); x.clearRect(0,0,640,128); x.font='600 30px Arial,sans-serif'; x.fillStyle='rgba(255,255,255,.92)'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(text,320,64); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+function addLabel(parent, text, y=6) { const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(text),transparent:true,depthWrite:false,opacity:.9})); s.scale.set(4.8,.95,1); s.position.y=y; parent.add(s); labelSprites.push(s); }
+function registerObject(object, data) { object.traverse((node)=>{ if(!node.isMesh)return; node.userData.objectData=data; node.userData.pickable=true; selectable.push(node); }); addLabel(object,data.label,6); }
+
+const rnObjects=[
+ {label:'PROJECTS',title:'PROJECTS',description:'Built things, public experiments and work in motion.',meta:'RN SYSTEM · WORK'},
+ {label:'EXPERIMENTS',title:'EXPERIMENTS',description:'Prototypes, tests and ideas that may become something larger.',meta:'RN SYSTEM · LAB'},
+ {label:'IDEAS',title:'IDEAS',description:'Loose concepts, sketches and unfinished directions.',meta:'RN SYSTEM · THOUGHT'},
+ {label:'NOTES',title:'NOTES',description:'Observations and field notes from the system.',meta:'RN SYSTEM · LOG'},
+ {label:'ABOUT',title:'ABOUT',description:'Aryan Bhagwan Patil · RN means RIGHT NOW.',meta:'RN SYSTEM · IDENTITY'},
+ {label:'ARCHIVE',title:'ARCHIVE',description:'Older work kept in orbit instead of deleted.',meta:'RN SYSTEM · MEMORY'}
+];
+if(system.nodes) system.nodes.forEach((node,i)=>registerObject(node.group || node.sphere || node.orbit,rnObjects[i]||rnObjects[0]));
+registerObject(system.core.group,{label:'RN',title:'RN SYSTEM',description:'The center of the working universe.',meta:'RIGHT NOW · ORIGIN'});
+
+function pick(event){ const rect=renderer.domElement.getBoundingClientRect(); pointer.x=((event.clientX-rect.left)/rect.width)*2-1; pointer.y=-((event.clientY-rect.top)/rect.height)*2+1; raycaster.setFromCamera(pointer,camera); const hit=raycaster.intersectObjects(selectable,true)[0]; return hit?.object || null; }
+function openObject(data){ selected=data; objectKicker.textContent=data.meta; objectTitle.textContent=data.title; objectDescription.textContent=data.description; objectMeta.textContent='CLICK FLY TO OBJECT · DRAG TO ORBIT · WHEEL TO ZOOM'; objectCard.classList.remove('hidden'); }
+function closeObject(){ selected=null; objectCard.classList.add('hidden'); }
+renderer.domElement.addEventListener('pointerup',(event)=>{ if(freeFly)return; const hit=pick(event); if(hit?.userData.objectData)openObject(hit.userData.objectData); });
+
+document.getElementById('object-close').addEventListener('click',closeObject);
+document.getElementById('object-fly').addEventListener('click',()=>{ if(!selected)return; const hit=selectable.find(n=>n.userData.objectData===selected); const target=new THREE.Vector3(); if(hit)hit.getWorldPosition(target); const from=camera.position.clone(),fromTarget=controls.target.clone(),to=target.clone().add(new THREE.Vector3(7,3.5,10)),t0=performance.now(); const step=(now)=>{ const p=Math.min(1,(now-t0)/1050),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2; camera.position.lerpVectors(from,to,e); controls.target.lerpVectors(fromTarget,target,e); if(p<1)requestAnimationFrame(step); else controls.update(); }; requestAnimationFrame(step); });
+
+document.querySelectorAll('[data-tool]').forEach((button)=>button.addEventListener('click',()=>{ document.querySelectorAll('.tool').forEach(b=>b.classList.remove('active')); button.classList.add('active'); const tool=button.dataset.tool; document.getElementById('destination-panel').classList.toggle('hidden',tool!=='destinations'); document.getElementById('visual-panel').classList.toggle('hidden',tool!=='visual'); if(tool==='missions')openObject({label:'RN OBJECTS',title:'RN OBJECTS',description:'Select an object in the scene to inspect it.',meta:'EXPLORATION MODE'}); }));
+
+document.querySelectorAll('[data-destination]').forEach((button)=>button.addEventListener('click',()=>{ const key=button.dataset.destination; document.getElementById('destination-panel').classList.add('hidden'); if(key==='galaxy'){camera.position.set(0,210,1040);controls.target.set(0,0,0);}else if(key==='solar'){const p=solarAnchor.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,72,250)));controls.target.copy(p);}else{const p=solar.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,8,21)));controls.target.copy(p);}controls.update(); }));
+
+document.getElementById('journeys').addEventListener('click',()=>showToast('JOURNEY MODE · RN SYSTEM → SOLAR SYSTEM → MILKY WAY'));
+document.getElementById('help').addEventListener('click',()=>showToast(freeFly?'FREE FLY · WASD / QE / K':'DRAG TO ORBIT · WHEEL TO ZOOM · CLICK OBJECTS · K FOR FREE FLY'));
+document.getElementById('rewind').addEventListener('click',()=>{timeRate=-Math.max(1,Math.abs(timeRate));showToast('TIME MOVING BACKWARD');});
+document.getElementById('forward').addEventListener('click',()=>{timeRate=Math.max(1,Math.abs(timeRate));showToast('TIME MOVING FORWARD');});
+document.getElementById('pause').addEventListener('click',()=>{motionEnabled=!motionEnabled;document.getElementById('pause').textContent=motionEnabled?'Ⅱ':'▶';showToast(motionEnabled?'SIMULATION RESUMED':'SIMULATION PAUSED');});
+document.querySelectorAll('.rate').forEach((b)=>b.addEventListener('click',()=>{timeRate=Math.sign(timeRate||1)*Number(b.dataset.rate);document.querySelectorAll('.rate').forEach(x=>x.classList.remove('active'));b.classList.add('active');}));
+document.getElementById('orbit-toggle').addEventListener('change',(e)=>scene.traverse(o=>{if(o.type==='LineLoop')o.visible=e.target.checked;}));
+document.getElementById('star-toggle').addEventListener('change',(e)=>{backgroundStars.visible=e.target.checked;galaxy.visible=e.target.checked;});
+document.getElementById('label-toggle').addEventListener('change',(e)=>labelSprites.forEach(s=>s.visible=e.target.checked));
+document.getElementById('motion-toggle').addEventListener('change',(e)=>{motionEnabled=e.target.checked;});
+function showToast(message){toast.textContent=message;toast.classList.add('visible');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('visible'),2600);}
+
+window.addEventListener('keydown',(e)=>{const k=e.key.toLowerCase();if(k==='k'){freeFly=!freeFly;controls.enabled=!freeFly;showToast(freeFly?'FREE FLY ENABLED · WASD / QE':'FREE FLY DISABLED');}if(k in keys)keys[k]=true;if(e.key==='Shift')shiftDown=true;});
+window.addEventListener('keyup',(e)=>{const k=e.key.toLowerCase();if(k in keys)keys[k]=false;if(e.key==='Shift')shiftDown=false;});
+function freeFlyUpdate(dt){if(!freeFly)return;const speed=(14+(shiftDown?45:0))*dt;const dir=new THREE.Vector3();camera.getWorldDirection(dir);const right=new THREE.Vector3().crossVectors(dir,camera.up).normalize();if(keys.w)camera.position.addScaledVector(dir,speed);if(keys.s)camera.position.addScaledVector(dir,-speed);if(keys.a)camera.position.addScaledVector(right,-speed);if(keys.d)camera.position.addScaledVector(right,speed);if(keys.q)camera.position.y+=speed;if(keys.e)camera.position.y-=speed;}
+function animate(){requestAnimationFrame(animate);const dt=Math.min(.05,clock.getDelta());if(motionEnabled){timeSeconds+=dt*timeRate;if(solar.userData.advance)solar.userData.advance(timeSeconds);if(galaxy.userData.advance)galaxy.userData.advance(timeSeconds,dt);if(system.core?.group)system.core.group.rotation.y=timeSeconds*.06;}backgroundStars.rotation.y+=dt*.0005*(motionEnabled?1:0);freeFlyUpdate(dt);if(!freeFly)controls.update();simTime.textContent=timeRate===1?'RIGHT NOW':`${Math.abs(timeRate)}× SIMULATION`;renderer.render(scene,camera);}
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+loader.classList.add('hidden');showToast('RN UNIVERSE READY · DRAG, ZOOM AND EXPLORE');animate();

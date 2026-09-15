@@ -63,6 +63,7 @@ function makeNode(node) {
   hitSphere.userData.payload = node;
   hitSphere.userData.selectable = true;
   hitSphere.userData.interaction = true;
+  hitSphere.userData.visual = sphere;
   body.add(hitSphere);
 
   const moons = [];
@@ -103,6 +104,7 @@ function makeCore(core) {
   hitSphere.userData.payload = core;
   hitSphere.userData.selectable = true;
   hitSphere.userData.interaction = true;
+  hitSphere.userData.visual = star;
   group.add(hitSphere);
 
   for (let i = 0; i < 3; i += 1) {

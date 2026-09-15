@@ -15,100 +15,36 @@ const objectMeta = document.getElementById('object-meta');
 const toast = document.getElementById('toast');
 const simTime = document.getElementById('sim-time');
 const lowPower = window.matchMedia('(max-width: 700px)').matches || (navigator.hardwareConcurrency || 8) <= 4;
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x03050a);
 const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.04, 10000);
 camera.position.set(14, 9, 26);
 const renderer = new THREE.WebGLRenderer({ antialias: !lowPower, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.8));
-renderer.setSize(innerWidth, innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-root.appendChild(renderer.domElement);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.045;
-controls.enablePan = true;
-controls.screenSpacePanning = true;
-controls.rotateSpeed = lowPower ? 0.42 : 0.58;
-controls.zoomSpeed = 0.8;
-controls.minDistance = 1.3;
-controls.maxDistance = 3600;
-if ('zoomToCursor' in controls) controls.zoomToCursor = true;
-scene.add(new THREE.HemisphereLight(0x7d8eb7, 0x02030a, 0.38));
-const sunRim = new THREE.DirectionalLight(0x9ebdff, 0.46); sunRim.position.set(12, 20, 18); scene.add(sunRim);
-
-function makeStars(count, radius, color, size, opacity) {
-  const positions = new Float32Array(count * 3);
-  let seed = 1837 + count;
-  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  for (let i = 0; i < count; i += 1) {
-    const r = radius * (0.45 + rnd() * 0.55); const a = rnd() * Math.PI * 2; const z = (rnd() * 2 - 1) * r; const rr = Math.sqrt(Math.max(0, r * r - z * z));
-    positions[i * 3] = Math.cos(a) * rr; positions[i * 3 + 1] = z; positions[i * 3 + 2] = Math.sin(a) * rr;
-  }
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  return new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
-}
-const backgroundStars = new THREE.Group();
-backgroundStars.add(makeStars(lowPower ? 5200 : 13500, 3000, 0xc7d8ff, lowPower ? 0.65 : 0.85, 0.82));
-backgroundStars.add(makeStars(lowPower ? 900 : 2200, 2400, 0xffc88f, lowPower ? 0.72 : 0.92, 0.42));
-scene.add(backgroundStars);
-
-const galaxy = buildMilkyWay(lowPower); scene.add(galaxy);
-const solar = buildSolarSystem(lowPower);
-const solarAnchor = new THREE.Group(); solarAnchor.position.copy(galaxy.userData.solarNeighborhood || new THREE.Vector3(0, 0, 470)); solarAnchor.add(solar); galaxy.add(solarAnchor);
-const system = buildRNSystem({ name: 'RN', mark: 'RN', title: 'RIGHT NOW', statement: 'A living field of work, experiments and observations.' });
-const rnAnchor = new THREE.Group(); rnAnchor.add(system.group); solar.add(rnAnchor);
-
-const selectable = []; let selected = null; let motionEnabled = true; let timeRate = 1; let timeSeconds = 0; let freeFly = false;
-const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); const clock = new THREE.Clock();
-const labelSprites = []; const keys = { w:false,a:false,s:false,d:false,q:false,e:false }; let shiftDown = false;
-
-function labelTexture(text) { const c=document.createElement('canvas'); c.width=640; c.height=128; const x=c.getContext('2d'); x.clearRect(0,0,640,128); x.font='600 30px Arial,sans-serif'; x.fillStyle='rgba(255,255,255,.92)'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(text,320,64); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
-function addLabel(parent, text, y=6) { const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(text),transparent:true,depthWrite:false,opacity:.9})); s.scale.set(4.8,.95,1); s.position.y=y; parent.add(s); labelSprites.push(s); }
-function registerObject(object, data) { object.traverse((node)=>{ if(!node.isMesh)return; node.userData.objectData=data; node.userData.pickable=true; selectable.push(node); }); addLabel(object,data.label,6); }
-
-const rnObjects=[
- {label:'PROJECTS',title:'PROJECTS',description:'Built things, public experiments and work in motion.',meta:'RN SYSTEM · WORK'},
- {label:'EXPERIMENTS',title:'EXPERIMENTS',description:'Prototypes, tests and ideas that may become something larger.',meta:'RN SYSTEM · LAB'},
- {label:'IDEAS',title:'IDEAS',description:'Loose concepts, sketches and unfinished directions.',meta:'RN SYSTEM · THOUGHT'},
- {label:'NOTES',title:'NOTES',description:'Observations and field notes from the system.',meta:'RN SYSTEM · LOG'},
- {label:'ABOUT',title:'ABOUT',description:'Aryan Bhagwan Patil · RN means RIGHT NOW.',meta:'RN SYSTEM · IDENTITY'},
- {label:'ARCHIVE',title:'ARCHIVE',description:'Older work kept in orbit instead of deleted.',meta:'RN SYSTEM · MEMORY'}
-];
-if(system.nodes) system.nodes.forEach((node,i)=>registerObject(node.group || node.sphere || node.orbit,rnObjects[i]||rnObjects[0]));
-registerObject(system.core.group,{label:'RN',title:'RN SYSTEM',description:'The center of the working universe.',meta:'RIGHT NOW · ORIGIN'});
-
-function pick(event){ const rect=renderer.domElement.getBoundingClientRect(); pointer.x=((event.clientX-rect.left)/rect.width)*2-1; pointer.y=-((event.clientY-rect.top)/rect.height)*2+1; raycaster.setFromCamera(pointer,camera); const hit=raycaster.intersectObjects(selectable,true)[0]; return hit?.object || null; }
-function openObject(data){ selected=data; objectKicker.textContent=data.meta; objectTitle.textContent=data.title; objectDescription.textContent=data.description; objectMeta.textContent='CLICK FLY TO OBJECT · DRAG TO ORBIT · WHEEL TO ZOOM'; objectCard.classList.remove('hidden'); }
-function closeObject(){ selected=null; objectCard.classList.add('hidden'); }
-renderer.domElement.addEventListener('pointerup',(event)=>{ if(freeFly)return; const hit=pick(event); if(hit?.userData.objectData)openObject(hit.userData.objectData); });
-
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.8)); renderer.setSize(innerWidth, innerHeight); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15; root.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.045; controls.enablePan = true; controls.screenSpacePanning = true; controls.rotateSpeed = lowPower ? 0.42 : 0.58; controls.zoomSpeed = 0.8; controls.minDistance = 1.3; controls.maxDistance = 3600; if ('zoomToCursor' in controls) controls.zoomToCursor = true;
+scene.add(new THREE.HemisphereLight(0x7d8eb7,0x02030a,0.38)); const sunRim = new THREE.DirectionalLight(0x9ebdff,0.46); sunRim.position.set(12,20,18); scene.add(sunRim);
+function makeStars(count,radius,color,size,opacity){const positions=new Float32Array(count*3);let seed=1837+count;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};for(let i=0;i<count;i+=1){const r=radius*(0.45+rnd()*0.55),a=rnd()*Math.PI*2,z=(rnd()*2-1)*r,rr=Math.sqrt(Math.max(0,r*r-z*z));positions[i*3]=Math.cos(a)*rr;positions[i*3+1]=z;positions[i*3+2]=Math.sin(a)*rr;}const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));return new THREE.Points(geo,new THREE.PointsMaterial({color,size,transparent:true,opacity,depthWrite:false,blending:THREE.AdditiveBlending}));}
+const backgroundStars=new THREE.Group(); backgroundStars.add(makeStars(lowPower?5200:13500,3000,0xc7d8ff,lowPower?.65:.85,.82)); backgroundStars.add(makeStars(lowPower?900:2200,2400,0xffc88f,lowPower?.72:.92,.42)); scene.add(backgroundStars);
+const galaxy=buildMilkyWay(lowPower); scene.add(galaxy); const solar=buildSolarSystem(lowPower); const solarAnchor=new THREE.Group(); solarAnchor.position.copy(galaxy.userData.solarNeighborhood||new THREE.Vector3(0,0,470)); solarAnchor.add(solar); galaxy.add(solarAnchor);
+const system=buildRNSystem({name:'RN',mark:'RN',title:'RIGHT NOW',statement:'A living field of work, experiments and observations.'}); const rnAnchor=new THREE.Group(); rnAnchor.add(system.group); solar.add(rnAnchor);
+const selectable=[]; let selected=null; let motionEnabled=true; let timeRate=1; let timeSeconds=0; let freeFly=false; const raycaster=new THREE.Raycaster(); const pointer=new THREE.Vector2(); const clock=new THREE.Clock(); const labelSprites=[]; const keys={w:false,a:false,s:false,d:false,q:false,e:false}; let shiftDown=false;
+function labelTexture(text){const c=document.createElement('canvas');c.width=640;c.height=128;const x=c.getContext('2d');x.clearRect(0,0,640,128);x.font='600 30px Arial,sans-serif';x.fillStyle='rgba(255,255,255,.92)';x.textAlign='center';x.textBaseline='middle';x.fillText(text,320,64);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
+function addLabel(parent,text,y=6){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(text),transparent:true,depthWrite:false,opacity:.9}));s.scale.set(4.8,.95,1);s.position.y=y;parent.add(s);labelSprites.push(s);}
+function registerObject(object,data){if(!object)return;object.traverse(node=>{if(!node.isMesh)return;node.userData.objectData=data;node.userData.pickable=true;selectable.push(node);});addLabel(object,data.label,6);}
+const rnObjects=[{label:'PROJECTS',title:'PROJECTS',description:'Built things, public experiments and work in motion.',meta:'RN SYSTEM · WORK'},{label:'EXPERIMENTS',title:'EXPERIMENTS',description:'Prototypes, tests and ideas that may become something larger.',meta:'RN SYSTEM · LAB'},{label:'IDEAS',title:'IDEAS',description:'Loose concepts, sketches and unfinished directions.',meta:'RN SYSTEM · THOUGHT'},{label:'NOTES',title:'NOTES',description:'Observations and field notes from the system.',meta:'RN SYSTEM · LOG'},{label:'ABOUT',title:'ABOUT',description:'Aryan Bhagwan Patil · RN means RIGHT NOW.',meta:'RN SYSTEM · IDENTITY'},{label:'ARCHIVE',title:'ARCHIVE',description:'Older work kept in orbit instead of deleted.',meta:'RN SYSTEM · MEMORY'}];
+if(system.nodes)system.nodes.forEach((node,i)=>registerObject(node.group||node.sphere||node.orbit,rnObjects[i]||rnObjects[0])); if(system.core?.group)registerObject(system.core.group,{label:'RN',title:'RN SYSTEM',description:'The center of the working universe.',meta:'RIGHT NOW · ORIGIN'});
+function pick(event){const rect=renderer.domElement.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(selectable,true)[0]?.object||null;}
+function openObject(data){selected=data;objectKicker.textContent=data.meta;objectTitle.textContent=data.title;objectDescription.textContent=data.description;objectMeta.textContent='CLICK FLY TO OBJECT · DRAG TO ORBIT · WHEEL TO ZOOM';objectCard.classList.remove('hidden');}
+function closeObject(){selected=null;objectCard.classList.add('hidden');}
+renderer.domElement.addEventListener('pointerup',event=>{if(freeFly)return;const hit=pick(event);if(hit?.userData.objectData)openObject(hit.userData.objectData);});
 document.getElementById('object-close').addEventListener('click',closeObject);
-document.getElementById('object-fly').addEventListener('click',()=>{ if(!selected)return; const hit=selectable.find(n=>n.userData.objectData===selected); const target=new THREE.Vector3(); if(hit)hit.getWorldPosition(target); const from=camera.position.clone(),fromTarget=controls.target.clone(),to=target.clone().add(new THREE.Vector3(7,3.5,10)),t0=performance.now(); const step=(now)=>{ const p=Math.min(1,(now-t0)/1050),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2; camera.position.lerpVectors(from,to,e); controls.target.lerpVectors(fromTarget,target,e); if(p<1)requestAnimationFrame(step); else controls.update(); }; requestAnimationFrame(step); });
-
-document.querySelectorAll('[data-tool]').forEach((button)=>button.addEventListener('click',()=>{ document.querySelectorAll('.tool').forEach(b=>b.classList.remove('active')); button.classList.add('active'); const tool=button.dataset.tool; document.getElementById('destination-panel').classList.toggle('hidden',tool!=='destinations'); document.getElementById('visual-panel').classList.toggle('hidden',tool!=='visual'); if(tool==='missions')openObject({label:'RN OBJECTS',title:'RN OBJECTS',description:'Select an object in the scene to inspect it.',meta:'EXPLORATION MODE'}); }));
-
-document.querySelectorAll('[data-destination]').forEach((button)=>button.addEventListener('click',()=>{ const key=button.dataset.destination; document.getElementById('destination-panel').classList.add('hidden'); if(key==='galaxy'){camera.position.set(0,210,1040);controls.target.set(0,0,0);}else if(key==='solar'){const p=solarAnchor.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,72,250)));controls.target.copy(p);}else{const p=solar.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,8,21)));controls.target.copy(p);}controls.update(); }));
-
-document.getElementById('journeys').addEventListener('click',()=>showToast('JOURNEY MODE · RN SYSTEM → SOLAR SYSTEM → MILKY WAY'));
-document.getElementById('help').addEventListener('click',()=>showToast(freeFly?'FREE FLY · WASD / QE / K':'DRAG TO ORBIT · WHEEL TO ZOOM · CLICK OBJECTS · K FOR FREE FLY'));
-document.getElementById('rewind').addEventListener('click',()=>{timeRate=-Math.max(1,Math.abs(timeRate));showToast('TIME MOVING BACKWARD');});
-document.getElementById('forward').addEventListener('click',()=>{timeRate=Math.max(1,Math.abs(timeRate));showToast('TIME MOVING FORWARD');});
-document.getElementById('pause').addEventListener('click',()=>{motionEnabled=!motionEnabled;document.getElementById('pause').textContent=motionEnabled?'Ⅱ':'▶';showToast(motionEnabled?'SIMULATION RESUMED':'SIMULATION PAUSED');});
-document.querySelectorAll('.rate').forEach((b)=>b.addEventListener('click',()=>{timeRate=Math.sign(timeRate||1)*Number(b.dataset.rate);document.querySelectorAll('.rate').forEach(x=>x.classList.remove('active'));b.classList.add('active');}));
-document.getElementById('orbit-toggle').addEventListener('change',(e)=>scene.traverse(o=>{if(o.type==='LineLoop')o.visible=e.target.checked;}));
-document.getElementById('star-toggle').addEventListener('change',(e)=>{backgroundStars.visible=e.target.checked;galaxy.visible=e.target.checked;});
-document.getElementById('label-toggle').addEventListener('change',(e)=>labelSprites.forEach(s=>s.visible=e.target.checked));
-document.getElementById('motion-toggle').addEventListener('change',(e)=>{motionEnabled=e.target.checked;});
+document.getElementById('object-fly').addEventListener('click',()=>{if(!selected)return;const hit=selectable.find(n=>n.userData.objectData===selected);const target=new THREE.Vector3();if(hit)hit.getWorldPosition(target);const from=camera.position.clone(),fromTarget=controls.target.clone(),to=target.clone().add(new THREE.Vector3(7,3.5,10)),t0=performance.now();const step=now=>{const p=Math.min(1,(now-t0)/1050),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;camera.position.lerpVectors(from,to,e);controls.target.lerpVectors(fromTarget,target,e);if(p<1)requestAnimationFrame(step);else controls.update();};requestAnimationFrame(step);});
+document.querySelectorAll('[data-tool]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.tool').forEach(b=>b.classList.remove('active'));button.classList.add('active');const tool=button.dataset.tool;document.getElementById('destination-panel').classList.toggle('hidden',tool!=='destinations');document.getElementById('visual-panel').classList.toggle('hidden',tool!=='visual');if(tool==='missions')openObject({label:'RN OBJECTS',title:'RN OBJECTS',description:'Select an object in the scene to inspect it.',meta:'EXPLORATION MODE'});}));
+document.querySelectorAll('[data-destination]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.destination;document.getElementById('destination-panel').classList.add('hidden');if(key==='galaxy'){camera.position.set(0,210,1040);controls.target.set(0,0,0);}else if(key==='solar'){const p=solarAnchor.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,72,250)));controls.target.copy(p);}else{const p=solar.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,8,21)));controls.target.copy(p);}controls.update();}));
+document.getElementById('journeys').addEventListener('click',()=>showToast('JOURNEY MODE · RN SYSTEM → SOLAR SYSTEM → MILKY WAY'));document.getElementById('help').addEventListener('click',()=>showToast(freeFly?'FREE FLY · WASD / QE / K':'DRAG TO ORBIT · WHEEL TO ZOOM · CLICK OBJECTS · K FOR FREE FLY'));document.getElementById('rewind').addEventListener('click',()=>{timeRate=-Math.max(1,Math.abs(timeRate));showToast('TIME MOVING BACKWARD');});document.getElementById('forward').addEventListener('click',()=>{timeRate=Math.max(1,Math.abs(timeRate));showToast('TIME MOVING FORWARD');});document.getElementById('pause').addEventListener('click',()=>{motionEnabled=!motionEnabled;document.getElementById('pause').textContent=motionEnabled?'Ⅱ':'▶';showToast(motionEnabled?'SIMULATION RESUMED':'SIMULATION PAUSED');});document.querySelectorAll('.rate').forEach(b=>b.addEventListener('click',()=>{timeRate=Math.sign(timeRate||1)*Number(b.dataset.rate);document.querySelectorAll('.rate').forEach(x=>x.classList.remove('active'));b.classList.add('active');}));
+document.getElementById('orbit-toggle').addEventListener('change',e=>scene.traverse(o=>{if(o.type==='LineLoop')o.visible=e.target.checked;}));document.getElementById('star-toggle').addEventListener('change',e=>{backgroundStars.visible=e.target.checked;galaxy.visible=e.target.checked;});document.getElementById('label-toggle').addEventListener('change',e=>labelSprites.forEach(s=>s.visible=e.target.checked));document.getElementById('motion-toggle').addEventListener('change',e=>{motionEnabled=e.target.checked;});
 function showToast(message){toast.textContent=message;toast.classList.add('visible');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('visible'),2600);}
-
-window.addEventListener('keydown',(e)=>{const k=e.key.toLowerCase();if(k==='k'){freeFly=!freeFly;controls.enabled=!freeFly;showToast(freeFly?'FREE FLY ENABLED · WASD / QE':'FREE FLY DISABLED');}if(k in keys)keys[k]=true;if(e.key==='Shift')shiftDown=true;});
-window.addEventListener('keyup',(e)=>{const k=e.key.toLowerCase();if(k in keys)keys[k]=false;if(e.key==='Shift')shiftDown=false;});
+window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='k'){freeFly=!freeFly;controls.enabled=!freeFly;showToast(freeFly?'FREE FLY ENABLED · WASD / QE':'FREE FLY DISABLED');}if(k in keys)keys[k]=true;if(e.key==='Shift')shiftDown=true;});window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k in keys)keys[k]=false;if(e.key==='Shift')shiftDown=false;});
 function freeFlyUpdate(dt){if(!freeFly)return;const speed=(14+(shiftDown?45:0))*dt;const dir=new THREE.Vector3();camera.getWorldDirection(dir);const right=new THREE.Vector3().crossVectors(dir,camera.up).normalize();if(keys.w)camera.position.addScaledVector(dir,speed);if(keys.s)camera.position.addScaledVector(dir,-speed);if(keys.a)camera.position.addScaledVector(right,-speed);if(keys.d)camera.position.addScaledVector(right,speed);if(keys.q)camera.position.y+=speed;if(keys.e)camera.position.y-=speed;}
 function animate(){requestAnimationFrame(animate);const dt=Math.min(.05,clock.getDelta());if(motionEnabled){timeSeconds+=dt*timeRate;if(solar.userData.advance)solar.userData.advance(timeSeconds);if(galaxy.userData.advance)galaxy.userData.advance(timeSeconds,dt);if(system.core?.group)system.core.group.rotation.y=timeSeconds*.06;}backgroundStars.rotation.y+=dt*.0005*(motionEnabled?1:0);freeFlyUpdate(dt);if(!freeFly)controls.update();simTime.textContent=timeRate===1?'RIGHT NOW':`${Math.abs(timeRate)}× SIMULATION`;renderer.render(scene,camera);}
-window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-loader.classList.add('hidden');showToast('RN UNIVERSE READY · DRAG, ZOOM AND EXPLORE');animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});loader.classList.add('hidden');showToast('RN UNIVERSE READY · DRAG, ZOOM AND EXPLORE');animate();

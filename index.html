@@ -6,22 +6,22 @@
 <meta name="theme-color" content="#000000" />
 <title>RN UNIVERSE · RIGHT NOW</title>
 <meta name="description" content="RN Universe · an interactive exact-reference galaxy viewer." />
-<link rel="stylesheet" href="./src/styles.css?v=20260915-galaxy2" />
+<link rel="stylesheet" href="./src/styles.css?v=20260915-galaxy3" />
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 </head>
 <body>
 <div id="app">
-  <div id="space" aria-label="Interactive RN Universe galaxy"></div>
+  <div id="space" aria-label="Interactive RN Universe galaxy and solar system"></div>
   <header class="hud">
     <div class="brand"><span>RN</span><small>UNIVERSE</small></div>
-    <div class="hud-center"><span>GALAXY</span><small>REFERENCE VIEW</small></div>
+    <div class="hud-center"><span>GALAXY</span><small>REFERENCE VIEW → DEEP ZOOM → SOLAR SYSTEM</small></div>
     <button id="reset-view" class="hud-button" type="button">RESET VIEW</button>
   </header>
-  <div class="hint">DRAG TO PAN · PINCH / WHEEL TO ZOOM</div>
+  <div class="hint">DRAG TO PAN · PINCH / WHEEL TO ZOOM · KEEP ZOOMING TO ENTER THE SOLAR SYSTEM</div>
   <div class="zoom-readout" id="zoom-readout">ZOOM 1.00×</div>
   <label class="image-loader" for="galaxy-file">USE EXACT IMAGE<input id="galaxy-file" type="file" accept="image/jpeg,image/png,image/webp" /></label>
   <div class="loader" id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">LOADING REFERENCE GALAXY</div></div>
 </div>
-<script type="module" src="./src/main.js?v=20260915-galaxy2"></script>
+<script type="module" src="./src/main.js?v=20260915-galaxy3"></script>
 </body>
 </html>

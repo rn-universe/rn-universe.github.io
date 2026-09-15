@@ -1,42 +1,218 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-9');
-const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-5');
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js';
 
 const root = document.getElementById('space');
 const loader = document.getElementById('loader');
-const objectCard = document.getElementById('object-card');
-const objectTitle = document.getElementById('object-title');
-const objectKicker = document.getElementById('object-kicker');
-const objectDescription = document.getElementById('object-description');
-const objectMeta = document.getElementById('object-meta');
+const card = document.getElementById('card');
+const cardKicker = document.getElementById('card-kicker');
+const cardTitle = document.getElementById('card-title');
+const cardCopy = document.getElementById('card-copy');
 const toast = document.getElementById('toast');
-const simTime = document.getElementById('sim-time');
-const lowPower = matchMedia('(max-width: 700px)').matches || (navigator.hardwareConcurrency || 8) <= 4;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const mobile = matchMedia('(max-width: 700px)').matches;
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: !mobile, powerPreference: 'high-performance' });
+} catch (error) {
+  throw new Error('WebGL unavailable', { cause: error });
+}
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x03050a);
-const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, .04, 10000);
-camera.position.set(14, 9, 26);
-const renderer = new THREE.WebGLRenderer({ antialias: !lowPower, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, lowPower ? 1.25 : 1.8)); renderer.setSize(innerWidth, innerHeight); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15; root.appendChild(renderer.domElement);
-const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping=true; controls.dampingFactor=.045; controls.enablePan=true; controls.screenSpacePanning=true; controls.rotateSpeed=.55; controls.zoomSpeed=.8; controls.minDistance=1.2; controls.maxDistance=3600; if('zoomToCursor'in controls)controls.zoomToCursor=true;
-scene.add(new THREE.HemisphereLight(0x7d8eb7,0x02030a,.38)); const rim=new THREE.DirectionalLight(0x9ebdff,.46);rim.position.set(12,20,18);scene.add(rim);
-function makeStars(count,radius,color,size,opacity){const p=new Float32Array(count*3);let s=12345+count;const r=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};for(let i=0;i<count;i++){const rr=radius*(.5+r()*.5),a=r()*Math.PI*2,z=(r()*2-1)*rr,xy=Math.sqrt(Math.max(0,rr*rr-z*z));p[i*3]=Math.cos(a)*xy;p[i*3+1]=z;p[i*3+2]=Math.sin(a)*xy}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));return new THREE.Points(g,new THREE.PointsMaterial({color,size,transparent:true,opacity,depthWrite:false,blending:THREE.AdditiveBlending}))}
-const bg=new THREE.Group();bg.add(makeStars(lowPower?5000:14000,3100,0xcfe0ff,lowPower?.65:.85,.82));bg.add(makeStars(lowPower?900:2400,2500,0xffc88f,lowPower?.7:.9,.4));scene.add(bg);
-const galaxy=buildMilkyWay(lowPower);scene.add(galaxy);const solar=buildSolarSystem(lowPower);const solarAnchor=new THREE.Group();solarAnchor.position.copy(galaxy.userData.solarNeighborhood||new THREE.Vector3(0,0,470));solarAnchor.add(solar);galaxy.add(solarAnchor);
-const core=new THREE.Group();const coreMesh=new THREE.Mesh(new THREE.SphereGeometry(2.2,32,20),new THREE.MeshBasicMaterial({color:0xffffff}));core.add(coreMesh);const coreGlow=new THREE.Mesh(new THREE.SphereGeometry(3.8,24,16),new THREE.MeshBasicMaterial({color:0x6faeff,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthWrite:false}));core.add(coreGlow);solar.add(core);
-const orbitItems=[];const labels=['PROJECTS','EXPERIMENTS','IDEAS','NOTES','ABOUT','ARCHIVE'];const colors=[0x6fb6ff,0x8ef0d0,0xffbf77,0xd2a5ff,0xf2edf0,0x93a9c8];const rnObjects=[];labels.forEach((label,i)=>{const orbit=new THREE.Group();const d=7+i*.7;orbit.rotation.y=i/6*Math.PI*2;const a=new THREE.Group();a.position.x=d;orbit.add(a);const mesh=new THREE.Mesh(new THREE.SphereGeometry(.72,24,16),new THREE.MeshStandardMaterial({color:colors[i],emissive:colors[i],emissiveIntensity:.18,roughness:.42}));a.add(mesh);for(let m=0;m<2;m++){const p=new THREE.Group();const moon=new THREE.Mesh(new THREE.SphereGeometry(.11,12,8),new THREE.MeshBasicMaterial({color:colors[i]}));moon.position.x=1.2+m*.45;p.add(moon);a.add(p);orbitItems.push({pivot:p,speed:.02+m*.01})}const pts=[];for(let j=0;j<=120;j++){const t=j/120*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(t)*d,0,Math.sin(t)*d))}orbit.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x7184a6,transparent:true,opacity:.16,depthWrite:false})));core.add(orbit);rnObjects.push({label,title:label,description:`${label} in the RN working universe.`,meta:`RN SYSTEM · ${label}`});orbitItems.push({object:mesh,data:rnObjects[i]})});
-let selected=null,motion=true,rate=1,t=0,free=false;const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),clock=new THREE.Clock(),keys={w:0,a:0,s:0,d:0,q:0,e:0};let shift=0;
-function pick(e){const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);return ray.intersectObjects(orbitItems.filter(x=>x.object).map(x=>x.object),true)[0]?.object}
-function showObject(data){selected=data;objectKicker.textContent=data.meta;objectTitle.textContent=data.title;objectDescription.textContent=data.description;objectMeta.textContent='FLY TO OBJECT · DRAG TO ORBIT · WHEEL TO ZOOM';objectCard.classList.remove('hidden')}
-renderer.domElement.addEventListener('pointerup',e=>{if(free)return;const hit=pick(e);const item=orbitItems.find(x=>x.object===hit);if(item)showObject(item.data)});
-document.getElementById('object-close').onclick=()=>objectCard.classList.add('hidden');
-document.getElementById('object-fly').onclick=()=>{if(!selected)return;const item=orbitItems.find(x=>x.data===selected);if(!item)return;const target=item.object.getWorldPosition(new THREE.Vector3());const from=camera.position.clone(),ft=controls.target.clone(),to=target.clone().add(new THREE.Vector3(5,2.7,8)),start=performance.now();const step=n=>{const p=Math.min(1,(n-start)/950),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;camera.position.lerpVectors(from,to,e);controls.target.lerpVectors(ft,target,e);if(p<1)requestAnimationFrame(step);};requestAnimationFrame(step)};
-document.querySelectorAll('[data-destination]').forEach(b=>b.onclick=()=>{const k=b.dataset.destination;document.getElementById('destination-panel').classList.add('hidden');if(k==='galaxy'){camera.position.set(0,210,1040);controls.target.set(0,0,0)}else if(k==='solar'){const p=solarAnchor.getWorldPosition(new THREE.Vector3());camera.position.copy(p.clone().add(new THREE.Vector3(0,72,250)));controls.target.copy(p)}else{camera.position.set(0,8,21);controls.target.set(0,0,0)}controls.update()});
-document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));b.classList.add('active');const k=b.dataset.tool;document.getElementById('destination-panel').classList.toggle('hidden',k!=='destinations');document.getElementById('visual-panel').classList.toggle('hidden',k!=='visual')});
-document.getElementById('journeys').onclick=()=>showToast('RN JOURNEY · RN SYSTEM → SOLAR SYSTEM → MILKY WAY');document.getElementById('help').onclick=()=>showToast('DRAG TO ORBIT · WHEEL TO ZOOM · K FOR FREE FLY');document.getElementById('rewind').onclick=()=>rate=-Math.abs(rate);document.getElementById('forward').onclick=()=>rate=Math.abs(rate);document.getElementById('pause').onclick=()=>motion=!motion;document.querySelectorAll('.rate').forEach(b=>b.onclick=()=>{rate=Math.sign(rate||1)*Number(b.dataset.rate);document.querySelectorAll('.rate').forEach(x=>x.classList.remove('active'));b.classList.add('active')});document.getElementById('star-toggle').onchange=e=>{bg.visible=galaxy.visible=e.target.checked};document.getElementById('motion-toggle').onchange=e=>motion=e.target.checked;document.getElementById('orbit-toggle').onchange=e=>scene.traverse(o=>{if(o.isLineLoop)o.visible=e.target.checked});
-function showToast(m){toast.textContent=m;toast.classList.add('visible');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('visible'),2200)}
-window.onkeydown=e=>{const k=e.key.toLowerCase();if(k==='k'){free=!free;controls.enabled=!free;showToast(free?'FREE FLY ON':'FREE FLY OFF')}if(k in keys)keys[k]=1;if(e.key==='Shift')shift=1};window.onkeyup=e=>{const k=e.key.toLowerCase();if(k in keys)keys[k]=0;if(e.key==='Shift')shift=0};
-function freeUpdate(dt){if(!free)return;const speed=(14+(shift?45:0))*dt,d=new THREE.Vector3();camera.getWorldDirection(d);const r=new THREE.Vector3().crossVectors(d,camera.up).normalize();if(keys.w)camera.position.addScaledVector(d,speed);if(keys.s)camera.position.addScaledVector(d,-speed);if(keys.a)camera.position.addScaledVector(r,-speed);if(keys.d)camera.position.addScaledVector(r,speed);if(keys.q)camera.position.y+=speed;if(keys.e)camera.position.y-=speed}
-function animate(){requestAnimationFrame(animate);const dt=Math.min(.05,clock.getDelta());if(motion){t+=dt*rate;if(solar.userData.advance)solar.userData.advance(t);if(galaxy.userData.advance)galaxy.userData.advance(t,dt);core.rotation.y=t*.05;coreGlow.scale.setScalar(1+Math.sin(t*1.7)*.04);orbitItems.forEach(x=>{if(x.pivot)x.pivot.rotation.y+=x.speed});}bg.rotation.y+=dt*.0005*(motion?1:0);freeUpdate(dt);if(!free)controls.update();simTime.textContent=rate===1?'RIGHT NOW':`${Math.abs(rate)}× SIMULATION`;renderer.render(scene,camera)}
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});loader.classList.add('hidden');showToast('RN UNIVERSE READY');animate();
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 5000);
+camera.position.set(0, 7, 24);
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, mobile ? 1.25 : 1.8));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+root.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.045;
+controls.enablePan = true;
+controls.screenSpacePanning = true;
+controls.minDistance = 4.5;
+controls.maxDistance = 900;
+controls.rotateSpeed = 0.55;
+controls.zoomSpeed = 0.8;
+if ('zoomToCursor' in controls) controls.zoomToCursor = true;
+
+scene.add(new THREE.AmbientLight(0x8294b8, 0.28));
+const keyLight = new THREE.PointLight(0xbfd8ff, 2.8, 260, 1.4);
+keyLight.position.set(12, 18, 10);
+scene.add(keyLight);
+
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function particleField(count, radius, color, size, opacity, seed) {
+  const random = rng(seed);
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    const r = radius * (0.5 + random() * 0.5);
+    const u = random() * 2 - 1;
+    const a = random() * Math.PI * 2;
+    const s = Math.sqrt(1 - u * u);
+    positions[i * 3] = Math.cos(a) * s * r;
+    positions[i * 3 + 1] = u * r;
+    positions[i * 3 + 2] = Math.sin(a) * s * r;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geometry, new THREE.PointsMaterial({ color, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+}
+
+const starfield = new THREE.Group();
+starfield.add(particleField(mobile ? 3200 : 7600, 1300, 0xd7e5ff, mobile ? 0.7 : 0.9, 0.82, 11));
+starfield.add(particleField(mobile ? 700 : 1700, 1050, 0xffc88f, mobile ? 0.8 : 1.0, 0.35, 19));
+scene.add(starfield);
+
+const universe = new THREE.Group();
+scene.add(universe);
+
+const core = new THREE.Group();
+universe.add(core);
+const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xf1f6ff });
+const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(2.1, 36, 24), coreMaterial);
+core.add(coreMesh);
+const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(3.6, 28, 18), new THREE.MeshBasicMaterial({ color: 0x77b7ff, transparent: true, opacity: 0.10, blending: THREE.AdditiveBlending, depthWrite: false }));
+core.add(coreGlow);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.035, 8, 160), new THREE.MeshBasicMaterial({ color: 0x8fb8ff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
+ring.rotation.x = Math.PI * 0.36;
+core.add(ring);
+
+const labels = [
+  ['PROJECTS', 7.0, 0x63a9ff, 'Work, builds and shipped experiments.'],
+  ['EXPERIMENTS', 8.2, 0x80e4c2, 'Things being tested, measured and broken.'],
+  ['IDEAS', 9.4, 0xffbd78, 'Early concepts and strange directions.'],
+  ['NOTES', 10.6, 0xc8a6ff, 'Observations, learning and fragments.'],
+  ['ABOUT', 11.8, 0xe7edf7, 'The person behind RN.'],
+  ['ARCHIVE', 13.0, 0x8da2c5, 'Older work and preserved history.'],
+];
+const orbitGroups = [];
+const selectable = [];
+
+for (let i = 0; i < labels.length; i += 1) {
+  const [name, radius, color, description] = labels[i];
+  const orbit = new THREE.Group();
+  orbit.rotation.y = (i / labels.length) * Math.PI * 2;
+  const linePoints = [];
+  for (let j = 0; j <= 160; j += 1) {
+    const a = (j / 160) * Math.PI * 2;
+    linePoints.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+  }
+  orbit.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(linePoints), new THREE.LineBasicMaterial({ color: 0x7387aa, transparent: true, opacity: 0.13, depthWrite: false })));
+  const anchor = new THREE.Group();
+  anchor.position.x = radius;
+  orbit.add(anchor);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.68, 24, 18), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.16, roughness: 0.45 }));
+  anchor.add(mesh);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.0, 18, 12), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.045, blending: THREE.AdditiveBlending, depthWrite: false }));
+  anchor.add(halo);
+  core.add(orbit);
+  orbitGroups.push({ orbit, speed: 0.04 - i * 0.002 });
+  selectable.push({ mesh, name, description });
+}
+
+function showMessage(text) {
+  toast.textContent = text;
+  toast.classList.add('visible');
+  clearTimeout(showMessage.timer);
+  showMessage.timer = setTimeout(() => toast.classList.remove('visible'), 2000);
+}
+
+function resetView(animated = true) {
+  const from = camera.position.clone();
+  const fromTarget = controls.target.clone();
+  const to = new THREE.Vector3(0, 7, 24);
+  const target = new THREE.Vector3(0, 0, 0);
+  const duration = reducedMotion || !animated ? 0 : 700;
+  if (!duration) {
+    camera.position.copy(to);
+    controls.target.copy(target);
+    controls.update();
+    return;
+  }
+  const start = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / duration);
+    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    camera.position.lerpVectors(from, to, e);
+    controls.target.lerpVectors(fromTarget, target, e);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function pick(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const pointer = new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1,
+  );
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(pointer, camera);
+  return raycaster.intersectObjects(selectable.map((item) => item.mesh), false)[0]?.object || null;
+}
+
+let down = null;
+renderer.domElement.addEventListener('pointerdown', (event) => { down = { x: event.clientX, y: event.clientY }; });
+renderer.domElement.addEventListener('pointerup', (event) => {
+  if (!down) return;
+  if (Math.hypot(event.clientX - down.x, event.clientY - down.y) < 8) {
+    const mesh = pick(event.clientX, event.clientY);
+    const item = selectable.find((entry) => entry.mesh === mesh);
+    if (item) {
+      cardKicker.textContent = `RN SYSTEM · ${item.name}`;
+      cardTitle.textContent = item.name;
+      cardCopy.textContent = item.description;
+      card.classList.remove('hidden');
+      showMessage(`SELECTED · ${item.name}`);
+    }
+  }
+  down = null;
+});
+
+document.getElementById('close').addEventListener('click', () => card.classList.add('hidden'));
+document.getElementById('reset-camera').addEventListener('click', () => resetView(true));
+document.getElementById('help').addEventListener('click', () => showMessage('DRAG TO ORBIT · SCROLL TO ZOOM · TAP AN ORBITING OBJECT'));
+
+const clock = new THREE.Clock();
+let elapsed = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+  if (!reducedMotion) {
+    starfield.rotation.y = elapsed * 0.003;
+    starfield.rotation.x = Math.sin(elapsed * 0.08) * 0.006;
+    core.rotation.y = elapsed * 0.08;
+    ring.rotation.z = elapsed * 0.22;
+    coreGlow.scale.setScalar(1 + Math.sin(elapsed * 1.6) * 0.035);
+    orbitGroups.forEach((entry, index) => {
+      entry.orbit.rotation.y += entry.speed * dt;
+      entry.orbit.children[1].rotation.y += (0.8 + index * 0.05) * dt;
+    });
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+loader.classList.add('hidden');
+showMessage('RN UNIVERSE READY');
+resetView(false);
+animate();

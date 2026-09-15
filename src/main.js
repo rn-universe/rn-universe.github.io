@@ -3,10 +3,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js?v=20260915-6');
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-6');
-const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-2');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-6');
+const { buildRNSystem } = await import('./scene/system.js?v=20260915-7');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-7');
+const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-3');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-7');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');
@@ -44,7 +44,6 @@ if (!canUseWebGL() || !window.THREE) {
   scene.background = new THREE.Color(0x02030a);
   scene.fog = new THREE.FogExp2(0x02030a, 0.00018);
   const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.08, 5000);
-  camera.position.set(0, 6.5, 18.5);
 
   let renderer;
   try {
@@ -71,7 +70,6 @@ if (!canUseWebGL() || !window.THREE) {
     controls.rotateSpeed = lowPower ? 0.42 : 0.52;
     controls.zoomSpeed = 0.72;
     if ('zoomToCursor' in controls) controls.zoomToCursor = true;
-    controls.target.set(0, 0, 0);
 
     scene.add(new THREE.HemisphereLight(0x7f9dd8, 0x05060d, 0.5));
     const rim = new THREE.DirectionalLight(0x9dbdff, 0.55);
@@ -101,10 +99,44 @@ if (!canUseWebGL() || !window.THREE) {
     }
 
     const starfield = buildBackgroundStars();
+    const galaxy = buildMilkyWay(lowPower);
     const solar = buildSolarSystem(lowPower);
     const system = buildRNSystem(SYSTEM_DATA);
-    const galaxy = buildMilkyWay(lowPower);
-    scene.add(starfield, solar, system.group, galaxy);
+
+    // The hierarchy is now physically nested:
+    // MILKY WAY (0,0,0) -> SOLAR NEIGHBORHOOD -> SOLAR SYSTEM -> RN SYSTEM.
+    const solarAnchor = new THREE.Group();
+    solarAnchor.name = 'SOLAR_NEIGHBORHOOD';
+    solarAnchor.position.copy(galaxy.userData.solarNeighborhood || new THREE.Vector3(0, 0, 470));
+
+    const rnAnchor = new THREE.Group();
+    rnAnchor.name = 'RN_SYSTEM_ANCHOR';
+    solarAnchor.add(solar, rnAnchor);
+    rnAnchor.add(system.group);
+    galaxy.add(solarAnchor);
+    scene.add(starfield, galaxy);
+
+    const solarWorldPosition = () => solarAnchor.getWorldPosition(new THREE.Vector3());
+
+    function getScaleDestination(scale) {
+      const definition = SCALE_DATA[scale];
+      const anchor = solarWorldPosition();
+      if (scale === 'galaxy') {
+        return {
+          position: new THREE.Vector3(...definition.position),
+          target: new THREE.Vector3(...definition.target),
+        };
+      }
+      return {
+        position: anchor.clone().add(new THREE.Vector3(...definition.position)),
+        target: anchor.clone().add(new THREE.Vector3(...definition.target)),
+      };
+    }
+
+    const initial = getScaleDestination('rn');
+    camera.position.copy(initial.position);
+    controls.target.copy(initial.target);
+    controls.update();
 
     const state = {
       selected: null,
@@ -127,8 +159,10 @@ if (!canUseWebGL() || !window.THREE) {
     }
 
     function updateScaleReadout() {
-      const distance = camera.position.length();
-      const scale = distance < 34 ? 'rn' : distance < 430 ? 'solar' : 'galaxy';
+      const center = solarWorldPosition();
+      const solarDistance = camera.position.distanceTo(center);
+      const galaxyDistance = camera.position.length();
+      const scale = solarDistance < 34 ? 'rn' : solarDistance < 430 ? 'solar' : galaxyDistance < 1220 ? 'galaxy' : 'galaxy';
       const details = { rn: 'close orbit', solar: 'wider perspective', galaxy: 'outer boundary' };
       scaleName.textContent = scale === 'rn' ? 'RN SYSTEM' : scale === 'solar' ? 'SOLAR SYSTEM' : 'MILKY WAY';
       scaleDetail.textContent = details[scale];
@@ -292,19 +326,21 @@ if (!canUseWebGL() || !window.THREE) {
     });
     renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
 
-    scaleButtons.forEach((button) => button.addEventListener('click', () => {
-      const destination = SCALE_DATA[button.dataset.scale];
+    function goToScale(scale, duration = 1100) {
+      const destination = getScaleDestination(scale);
       state.history = [];
       closePanel(false);
       clearHover();
-      beginFly(destination.position, destination.target, 1100);
-    }));
+      beginFly(destination.position.toArray(), destination.target.toArray(), duration);
+    }
+
+    scaleButtons.forEach((button) => button.addEventListener('click', () => goToScale(button.dataset.scale)));
     panelClose.addEventListener('click', () => closePanel(true));
     window.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closePanel(true);
-      if (event.key === '1') beginFly(SCALE_DATA.rn.position, SCALE_DATA.rn.target, 900);
-      if (event.key === '2') beginFly(SCALE_DATA.solar.position, SCALE_DATA.solar.target, 1000);
-      if (event.key === '3') beginFly(SCALE_DATA.galaxy.position, SCALE_DATA.galaxy.target, 1100);
+      if (event.key === '1') goToScale('rn', 900);
+      if (event.key === '2') goToScale('solar', 1000);
+      if (event.key === '3') goToScale('galaxy', 1100);
     });
 
     function closePanel(restore) {
@@ -344,11 +380,15 @@ if (!canUseWebGL() || !window.THREE) {
       });
       system.core.group.rotation.y = elapsed * 0.06;
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
-      if (galaxy.userData.advance) galaxy.userData.advance(elapsed, clock.getDelta());
+      if (galaxy.userData.advance) galaxy.userData.advance(elapsed, 0);
       if (solar.userData.advance) solar.userData.advance(elapsed);
-      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 120, 610);
-      const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
-      const solarFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 165, 445);
+
+      const galaxyDistance = camera.position.length();
+      const solarDistance = camera.position.distanceTo(solarWorldPosition());
+      const galaxyFade = THREE.MathUtils.smoothstep(galaxyDistance, 90, 620);
+      const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(solarDistance, 22, 160);
+      const solarFade = 1 - THREE.MathUtils.smoothstep(solarDistance, 165, 445);
+
       galaxy.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) {
           const opacity = object.material.userData.baseOpacity * galaxyFade;
@@ -362,6 +402,7 @@ if (!canUseWebGL() || !window.THREE) {
       solar.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) object.material.opacity = object.material.userData.baseOpacity * solarFade;
       });
+
       if (!state.fly) controls.update();
       updateScaleReadout();
       updateFocusLabel();

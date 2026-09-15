@@ -1,32 +1,37 @@
 const THREE = window.THREE;
 
+let starTexture;
+
+function getStarTexture() {
+  if (starTexture) return starTexture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.16, 'rgba(255,255,255,0.96)');
+  gradient.addColorStop(0.42, 'rgba(255,255,255,0.38)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 64, 64);
+  starTexture = new THREE.CanvasTexture(canvas);
+  starTexture.needsUpdate = true;
+  return starTexture;
+}
+
 export function makeCircularPointsMaterial({ color, size, opacity }) {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color(color) },
-      uSize: { value: size },
-      uOpacity: { value: opacity },
-    },
-    vertexShader: [
-      'uniform float uSize;',
-      'void main() {',
-      '  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);',
-      '  gl_PointSize = clamp(uSize * (260.0 / max(1.0, -mvPosition.z)), 1.05, 9.0);',
-      '  gl_Position = projectionMatrix * mvPosition;',
-      '}',
-    ].join('\n'),
-    fragmentShader: [
-      'uniform vec3 uColor;',
-      'uniform float uOpacity;',
-      'void main() {',
-      '  float distanceFromCenter = distance(gl_PointCoord, vec2(0.5));',
-      '  float softness = 1.0 - smoothstep(0.22, 0.5, distanceFromCenter);',
-      '  if (softness < 0.01) discard;',
-      '  gl_FragColor = vec4(uColor, softness * uOpacity);',
-      '}',
-    ].join('\n'),
+  const material = new THREE.PointsMaterial({
+    color,
+    size,
+    map: getStarTexture(),
     transparent: true,
+    opacity,
+    alphaTest: 0.01,
+    sizeAttenuation: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
+  material.userData.baseOpacity = opacity;
+  return material;
 }

@@ -45,11 +45,10 @@ solarControls.maxDistance = 240;
 solarControls.enablePan = true;
 solarControls.enabled = false;
 solarControls.target.set(0, 0, 0);
-
-const solarLights = new THREE.HemisphereLight(0x7e92bc, 0x03040a, .42);
+solar.add(new THREE.HemisphereLight(0x7e92bc, 0x03040a, .42));
 const solarRim = new THREE.DirectionalLight(0xa5c7ff, .6);
 solarRim.position.set(12, 25, 18);
-solar.add(solarLights, solarRim);
+solar.add(solarRim);
 
 let mode = 'galaxy';
 let imageTexture = null;
@@ -61,6 +60,13 @@ function fit(texture) {
   imageAspect = texture.image.width / texture.image.height;
   const viewport = innerWidth / innerHeight;
   plane.scale.set(imageAspect >= viewport ? imageAspect / viewport : 1, imageAspect >= viewport ? 1 : viewport / imageAspect, 1);
+  plane.position.z = 0;
+}
+
+function fitSolarBackdrop() {
+  const width = 900;
+  plane.scale.set(imageAspect >= 1 ? width : width * imageAspect, imageAspect >= 1 ? width / imageAspect : width, 1);
+  plane.position.z = -280;
 }
 
 function setMode(next) {
@@ -69,12 +75,12 @@ function setMode(next) {
     solar.visible = false;
     controls.enabled = true;
     solarControls.enabled = false;
-    renderer.setScissorTest(false);
-    renderer.setClearColor(0x000000, 1);
+    plane.position.z = 0;
   } else {
     solar.visible = true;
     controls.enabled = false;
     solarControls.enabled = true;
+    fitSolarBackdrop();
     solarCamera.aspect = innerWidth / innerHeight;
     solarCamera.updateProjectionMatrix();
   }
@@ -85,7 +91,7 @@ function updateZoom() {
     zoomReadout.textContent = `ZOOM ${camera.zoom.toFixed(2)}×`;
     if (camera.zoom >= 9) setMode('solar');
   } else {
-    zoomReadout.textContent = 'SOLAR SYSTEM';
+    zoomReadout.textContent = 'SOLAR SYSTEM · DEEP ZOOM';
   }
 }
 
@@ -95,6 +101,7 @@ function mountTexture(texture) {
   texture.magFilter = THREE.LinearFilter;
   material.map = texture;
   material.needsUpdate = true;
+  imageTexture = texture;
   fit(texture);
   camera.zoom = 1;
   controls.target.set(0, 0, 0);
@@ -117,7 +124,7 @@ fileInput.addEventListener('change', (event) => {
 });
 
 controls.addEventListener('change', updateZoom);
-solarControls.addEventListener('change', () => { if (mode === 'solar') zoomReadout.textContent = 'SOLAR SYSTEM'; });
+solarControls.addEventListener('change', () => { if (mode === 'solar') zoomReadout.textContent = 'SOLAR SYSTEM · DEEP ZOOM'; });
 
 resetView.addEventListener('click', () => {
   setMode('galaxy');
@@ -126,17 +133,14 @@ resetView.addEventListener('click', () => {
   controls.update();
   updateZoom();
 });
-
-renderer.domElement.addEventListener('dblclick', () => {
-  resetView.click();
-});
+renderer.domElement.addEventListener('dblclick', () => resetView.click());
 
 addEventListener('resize', () => {
   camera.left = -1; camera.right = 1; camera.top = 1; camera.bottom = -1; camera.updateProjectionMatrix();
   solarCamera.aspect = innerWidth / innerHeight;
   solarCamera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-  if (imageTexture) fit(imageTexture);
+  if (imageTexture) { if (mode === 'galaxy') fit(imageTexture); else fitSolarBackdrop(); }
 });
 
 function render() {
@@ -144,11 +148,7 @@ function render() {
   const dt = Math.min(.05, clock.getDelta());
   simTime += dt;
   if (solar.userData.advance) solar.userData.advance(simTime);
-  if (mode === 'galaxy') {
-    renderer.render(scene, camera);
-  } else {
-    renderer.render(scene, solarCamera);
-  }
+  if (mode === 'galaxy') renderer.render(scene, camera);
+  else renderer.render(scene, solarCamera);
 }
-
 render();

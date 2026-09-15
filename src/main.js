@@ -3,9 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
-const { buildRNSystem } = await import('./scene/system.js?v=20260915-4');
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-4');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-4');
+const { buildRNSystem } = await import('./scene/system.js?v=20260915-5');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-5');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-5');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');
@@ -90,7 +90,7 @@ if (!canUseWebGL() || !window.THREE) {
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 8.0 : 9.0, opacity: 0.86 }));
+      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.8 : 5.8, opacity: 0.95 }));
     }
 
     function buildSolarNeighborhood() {

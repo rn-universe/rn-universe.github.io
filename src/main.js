@@ -5,6 +5,7 @@ import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 window.THREE = THREE;
 const { buildRNSystem } = await import('./scene/system.js?v=20260915-6');
 const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-5');
+const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-1');
 const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-5');
 
 const root = document.getElementById('space');
@@ -93,31 +94,8 @@ if (!canUseWebGL() || !window.THREE) {
       return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.8 : 5.8, opacity: 0.95 }));
     }
 
-    function buildSolarNeighborhood() {
-      const group = new THREE.Group();
-      group.name = 'SOLAR_SYSTEM';
-      const radii = [38, 58, 82, 112, 151, 191];
-      radii.forEach((radius, index) => {
-        const points = [];
-        for (let i = 0; i <= 120; i += 1) {
-          const angle = i / 120 * Math.PI * 2;
-          points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
-        }
-        const line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: index % 2 ? 0x637aa9 : 0x879bc6, transparent: true, opacity: 0.07, depthWrite: false }));
-        line.rotation.z = (index - 2) * 0.035;
-        group.add(line);
-        const planet = new THREE.Mesh(new THREE.SphereGeometry(0.7 + index * 0.08, 12, 8), new THREE.MeshStandardMaterial({ color: index % 2 ? 0x7894c6 : 0xd0a878, roughness: 0.8, metalness: 0.05, emissive: index % 2 ? 0x17284d : 0x2e1a12, emissiveIntensity: 0.4 }));
-        planet.position.set(radius, (index - 2) * 0.8, 0);
-        const planetOrbit = new THREE.Group();
-        planetOrbit.rotation.y = index * 1.4;
-        planetOrbit.add(planet);
-        group.add(planetOrbit);
-      });
-      return group;
-    }
-
     const starfield = buildBackgroundStars();
-    const solar = buildSolarNeighborhood();
+    const solar = buildSolarSystem(lowPower);
     const system = buildRNSystem(SYSTEM_DATA);
     const galaxy = buildMilkyWay(lowPower);
     scene.add(starfield, solar, system.group, galaxy);
@@ -360,8 +338,10 @@ if (!canUseWebGL() || !window.THREE) {
       system.core.group.rotation.y = elapsed * 0.06;
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
       galaxy.rotation.y = elapsed * 0.004;
+      if (solar.userData.advance) solar.userData.advance(elapsed);
       const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 130, 560);
       const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
+      const solarFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 180, 420);
       galaxy.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) {
           const opacity = object.material.userData.baseOpacity * galaxyFade;
@@ -372,7 +352,9 @@ if (!canUseWebGL() || !window.THREE) {
       system.group.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.rnOrbit) object.material.opacity = object.material.userData.baseOpacity * rnOrbitFade;
       });
-      solar.children.forEach((child, index) => { if (child.type === 'Group') child.rotation.y += 0.00025 + index * 0.00003; });
+      solar.traverse((object) => {
+        if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) object.material.opacity = object.material.userData.baseOpacity * solarFade;
+      });
       if (!state.fly) controls.update();
       updateScaleReadout();
       updateFocusLabel();

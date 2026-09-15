@@ -1,30 +1,43 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#05070d" />
-  <meta name="description" content="RN Universe · an interactive 3D working universe by Aryan Bhagwan Patil." />
+  <meta name="theme-color" content="#03050a" />
+  <meta name="description" content="RN Universe by Aryan Bhagwan Patil." />
   <title>RN UNIVERSE · RIGHT NOW</title>
-  <link rel="stylesheet" href="./src/styles.css?v=20260915-21" />
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/examples/jsm/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+  <link rel="stylesheet" href="./src/styles.css?v=reset-2" />
 </head>
 <body>
   <main id="app">
-    <div id="space" aria-label="Interactive RN Universe 3D environment"></div>
-    <header class="topbar"><div class="brand"><span class="brand-main">RN</span><span class="brand-sub">UNIVERSE</span></div><button id="journeys" class="top-button" type="button">JOURNEYS</button><button id="help" class="top-button" type="button">?</button></header>
-    <aside class="left-stack" aria-label="Navigation tools">
-      <button class="tool active" data-tool="explore" type="button">EXPLORE</button>
-      <button class="tool" data-tool="destinations" type="button">DESTINATIONS</button>
-      <button class="tool" data-tool="missions" type="button">RN OBJECTS</button>
-      <button class="tool" data-tool="visual" type="button">VISUALS</button>
-    </aside>
-    <section id="object-card" class="object-card hidden" aria-live="polite"><button id="object-close" class="icon-button" type="button" aria-label="Close">×</button><div id="object-kicker" class="object-kicker">OBJECT</div><h1 id="object-title">RN SYSTEM</h1><p id="object-description"></p><div id="object-meta" class="object-meta"></div><button id="object-fly" class="primary-button" type="button">FLY TO OBJECT</button></section>
-    <section id="destination-panel" class="bottom-panel hidden" aria-label="Destinations"><div class="panel-title">DESTINATIONS</div><div class="destination-row"><button data-destination="rn" type="button"><strong>RN SYSTEM</strong><span>projects + experiments</span></button><button data-destination="solar" type="button"><strong>SOLAR SYSTEM</strong><span>sun + planets + moons</span></button><button data-destination="galaxy" type="button"><strong>MILKY WAY</strong><span>outer perspective</span></button></div></section>
-    <section id="visual-panel" class="bottom-panel hidden" aria-label="Visual controls"><div class="panel-title">VISUAL CONTROLS</div><div class="control-grid"><label><span>ORBIT LINES</span><input id="orbit-toggle" type="checkbox" checked /></label><label><span>STARFIELD</span><input id="star-toggle" type="checkbox" checked /></label><label><span>OBJECT LABELS</span><input id="label-toggle" type="checkbox" checked /></label><label><span>SIMULATION</span><input id="motion-toggle" type="checkbox" checked /></label></div></section>
-    <div class="timebar"><div class="time-group"><button id="rewind" class="time-button" type="button">◀</button><button id="pause" class="time-button" type="button">Ⅱ</button><button id="forward" class="time-button" type="button">▶</button></div><div class="time-readout"><span>SIMULATION TIME</span><strong id="sim-time">RIGHT NOW</strong></div><div class="rate-group"><span>RATE</span><button class="rate active" data-rate="1" type="button">1×</button><button class="rate" data-rate="10" type="button">10×</button><button class="rate" data-rate="100" type="button">100×</button></div></div>
-    <div id="toast" class="toast" role="status" aria-live="polite"></div><div id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">INITIALIZING 3D SPACE</div></div>
+    <div id="space" aria-label="RN Universe 3D space"></div>
+    <div id="loader"><div class="loader-title">RN UNIVERSE</div><div class="loader-sub">STARTING 3D SPACE</div></div>
+    <header class="topbar">
+      <div class="brand"><strong>RN</strong><span>UNIVERSE</span></div>
+      <button id="reset-camera" type="button">RESET VIEW</button>
+      <button id="help" type="button">?</button>
+    </header>
+    <div class="hud"><span>DRAG</span><i>ORBIT</i><span>SCROLL</span><i>ZOOM</i><span>TAP</span><i>SELECT</i></div>
+    <section id="card" class="card hidden">
+      <button id="close" class="close" type="button" aria-label="Close">×</button>
+      <div id="card-kicker">RN OBJECT</div>
+      <h1 id="card-title"></h1>
+      <p id="card-copy"></p>
+    </section>
+    <div id="toast" class="toast"></div>
   </main>
-  <script type="module" src="./src/boot.js?v=20260915-1"></script>
+  <script>
+    window.addEventListener('error', function (event) {
+      const loader = document.getElementById('loader');
+      const toast = document.getElementById('toast');
+      if (loader) loader.classList.add('hidden');
+      if (toast) {
+        toast.textContent = '3D ERROR · RELOAD';
+        toast.classList.add('visible');
+      }
+      console.error(event.error || event.message);
+    });
+  </script>
+  <script type="module" src="./src/main.js?v=reset-2"></script>
 </body>
 </html>

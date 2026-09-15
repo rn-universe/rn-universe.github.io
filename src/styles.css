@@ -18,12 +18,18 @@ button { color: inherit; }
 #star-canvas { display: block; width: 100%; height: 100%; }
 #space { position: fixed; inset: 0; z-index: 1; }
 canvas { display: block; width: 100%; height: 100%; outline: none; }
+#space canvas { cursor: grab; touch-action: none; }
+#space canvas:active { cursor: grabbing; }
 
 #ui { position: fixed; inset: 0; z-index: 5; pointer-events: none; user-select: none; }
 .brand { position: absolute; top: 28px; left: 30px; line-height: 1; }
 .brand-mark { font: 600 25px/1 Arial, sans-serif; letter-spacing: 0.15em; }
 .brand-sub { margin-top: 7px; color: var(--muted); font-size: 9px; letter-spacing: 0.36em; }
 .brand-line { width: 42px; margin-top: 16px; border-top: 1px solid var(--accent); opacity: 0.7; }
+
+.live-status { position: absolute; top: 29px; left: 50%; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); color: var(--muted); font-size: 8px; letter-spacing: .2em; }
+.live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px rgba(247, 217, 139, .65); }
+.live-divider { color: var(--faint); }
 
 .scale-nav { position: absolute; top: 28px; right: 28px; display: flex; gap: 7px; pointer-events: auto; }
 .scale-btn { border: 1px solid transparent; background: transparent; color: var(--muted); padding: 8px 9px; cursor: pointer; font-size: 9px; letter-spacing: 0.16em; transition: color .25s ease, border-color .25s ease, background .25s ease; }
@@ -33,6 +39,9 @@ canvas { display: block; width: 100%; height: 100%; outline: none; }
 .scale-readout { position: absolute; left: 30px; bottom: 29px; display: flex; align-items: baseline; gap: 10px; }
 .scale-name { color: var(--ink); font-size: 10px; letter-spacing: 0.21em; }
 .scale-detail { color: var(--muted); font-size: 9px; letter-spacing: 0.1em; }
+.journey-hint { position: absolute; left: 50%; bottom: 28px; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); color: var(--faint); font-size: 7px; letter-spacing: .16em; opacity: .78; }
+.journey-key { min-width: 15px; padding: 3px 4px; border: 1px solid rgba(220, 229, 255, .14); color: var(--muted); text-align: center; }
+.journey-arrow { color: rgba(247, 217, 139, .5); }
 .instructions { position: absolute; right: 29px; bottom: 29px; color: var(--muted); font-size: 9px; letter-spacing: 0.19em; text-align: right; }
 .instructions span { color: var(--faint); }
 
@@ -79,8 +88,10 @@ canvas { display: block; width: 100%; height: 100%; outline: none; }
   .brand { top: 19px; left: 19px; }
   .brand-mark { font-size: 21px; }
   .brand-line { margin-top: 12px; }
+  .live-status { top: 20px; font-size: 7px; }
   .scale-nav { top: 17px; right: 14px; gap: 0; }
   .scale-btn { padding: 7px 5px; font-size: 8px; letter-spacing: .09em; }
+  .journey-hint { left: 50%; bottom: 19px; font-size: 6px; gap: 5px; }
   .instructions { right: 18px; bottom: 20px; font-size: 8px; letter-spacing: .13em; }
   .scale-readout { left: 18px; bottom: 20px; display: block; }
   .scale-detail { display: block; margin-top: 5px; font-size: 8px; }

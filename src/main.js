@@ -4,9 +4,9 @@ import { SYSTEM_DATA, SCALE_DATA } from './data/content.js';
 
 window.THREE = THREE;
 const { buildRNSystem } = await import('./scene/system.js?v=20260915-6');
-const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-5');
-const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-1');
-const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-5');
+const { buildMilkyWay } = await import('./scene/galaxy.js?v=20260915-6');
+const { buildSolarSystem } = await import('./scene/solar.js?v=20260915-2');
+const { makeCircularPointsMaterial } = await import('./scene/particles.js?v=20260915-6');
 
 const root = document.getElementById('space');
 const fallback = document.getElementById('fallback');
@@ -79,19 +79,25 @@ if (!canUseWebGL() || !window.THREE) {
     scene.add(rim);
 
     function buildBackgroundStars() {
-      const count = lowPower ? 1500 : 3400;
+      const count = lowPower ? 2300 : 6200;
       const positions = [];
       let seed = 81;
       const next = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
       for (let i = 0; i < count; i += 1) {
-        const radius = 960 + next() * 1850;
+        const radius = 850 + next() * 2200;
         const theta = next() * Math.PI * 2;
         const phi = Math.acos(2 * next() - 1);
         positions.push(radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta));
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      return new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.8 : 5.8, opacity: 0.95 }));
+      const points = new THREE.Points(geometry, makeCircularPointsMaterial({ color: 0xdbe6ff, size: lowPower ? 4.1 : 5.2, opacity: 0.9 }));
+      points.name = 'DEEP_SPACE_STARS';
+      points.userData.advance = (elapsed) => {
+        points.rotation.y = elapsed * 0.00028;
+        points.rotation.x = Math.sin(elapsed * 0.025) * 0.002;
+      };
+      return points;
     }
 
     const starfield = buildBackgroundStars();
@@ -330,6 +336,7 @@ if (!canUseWebGL() || !window.THREE) {
       requestAnimationFrame(animate);
       const elapsed = clock.getElapsedTime();
       stepFly(performance.now());
+      if (starfield.userData.advance) starfield.userData.advance(elapsed);
       system.nodes.forEach((node) => {
         node.orbit.rotation.y += node.data.speed;
         node.sphere.rotation.y += 0.002;
@@ -337,11 +344,11 @@ if (!canUseWebGL() || !window.THREE) {
       });
       system.core.group.rotation.y = elapsed * 0.06;
       system.core.star.scale.setScalar(1 + Math.sin(elapsed * 1.7) * 0.025);
-      galaxy.rotation.y = elapsed * 0.004;
+      if (galaxy.userData.advance) galaxy.userData.advance(elapsed, clock.getDelta());
       if (solar.userData.advance) solar.userData.advance(elapsed);
-      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 130, 560);
+      const galaxyFade = THREE.MathUtils.smoothstep(camera.position.length(), 120, 610);
       const rnOrbitFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 22, 160);
-      const solarFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 180, 420);
+      const solarFade = 1 - THREE.MathUtils.smoothstep(camera.position.length(), 165, 445);
       galaxy.traverse((object) => {
         if (object.material && object.material.userData && object.material.userData.baseOpacity !== undefined) {
           const opacity = object.material.userData.baseOpacity * galaxyFade;
